@@ -242,8 +242,9 @@ async def preview_excel(file: UploadFile = File(...)):
             except:
                 continue
         
-        # Get sample from first valid sheet for column preview (with proper header detection)
-        sample_columns = []
+        # Collect ALL unique columns from ALL sheets (not just the first one)
+        all_unique_columns = {}  # column_name -> sample values
+        
         for sheet_name in xl.sheet_names:
             if sheet_name.lower().strip() in skip_sheets:
                 continue
@@ -252,19 +253,19 @@ async def preview_excel(file: UploadFile = File(...)):
                 df = pd.read_excel(xl, sheet_name=sheet_name, header=header_row, nrows=5)
                 for col in df.columns:
                     col_name = str(col).strip()
-                    # Skip unnamed columns or columns that look like row numbers
+                    # Skip unnamed columns
                     if 'unnamed' in col_name.lower():
                         continue
-                    sample_values = df[col].dropna().head(3).tolist()
-                    sample_values = [str(v)[:50] for v in sample_values]
-                    sample_columns.append({
-                        "name": col_name,
-                        "samples": sample_values
-                    })
-                if sample_columns:  # Only break if we found valid columns
-                    break
+                    # Only add if we haven't seen this column yet
+                    if col_name not in all_unique_columns:
+                        sample_values = df[col].dropna().head(3).tolist()
+                        sample_values = [str(v)[:50] for v in sample_values]
+                        all_unique_columns[col_name] = sample_values
             except:
                 continue
+        
+        # Convert to list format
+        sample_columns = [{"name": name, "samples": samples} for name, samples in all_unique_columns.items()]
         
         return {
             "file_id": file_id,
