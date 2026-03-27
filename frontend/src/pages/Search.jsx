@@ -100,7 +100,7 @@ const Search = () => {
             <div className="flex-1 relative">
               <MagnifyingGlass 
                 size={20} 
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" 
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" 
               />
               <input
                 type="text"
@@ -114,7 +114,7 @@ const Search = () => {
               {query && (
                 <button 
                   onClick={clearSearch}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 z-10"
                   data-testid="clear-search"
                 >
                   <X size={18} />

@@ -120,7 +120,7 @@ const PriceHistory = () => {
             <div className="flex-1 relative">
               <MagnifyingGlass 
                 size={20} 
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" 
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" 
               />
               <input
                 type="text"
