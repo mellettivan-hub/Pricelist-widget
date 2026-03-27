@@ -93,82 +93,88 @@ def parse_excel_file(file_content: bytes, file_name: str, vendor_id: str, vendor
         for sheet_name in xl.sheet_names:
             try:
                 # Skip non-product sheets
-                if sheet_name.lower() in ['home page', 'index', 'services', 'notes', 'co. details', 'quote']:
+                skip_sheets = ['home page', 'index', 'services', 'notes', 'co. details', 'co. details ', 'quote', 'in stock pricelist']
+                if sheet_name.lower().strip() in skip_sheets:
                     continue
                 
-                df = pd.read_excel(xl, sheet_name=sheet_name)
+                # Read without header first to find actual header row
+                df_raw = pd.read_excel(xl, sheet_name=sheet_name, header=None, nrows=15)
                 
-                # Try to identify column structure
-                # Pattern 1: HIKVISION SA format (Product name, SAP code, Unit Price (xVAT))
-                # Pattern 2: Sensor format (Sensor Product Code, Description, Sub-D price)
+                # Find header row by looking for key terms
+                header_row = None
+                for idx, row in df_raw.iterrows():
+                    row_str = ' '.join([str(v).lower() for v in row.values if pd.notna(v)])
+                    if any(term in row_str for term in ['product code', 'product name', 'sensor product', 'sap code', 'description']):
+                        header_row = idx
+                        break
+                
+                if header_row is None:
+                    # Try to detect based on numeric price patterns
+                    for idx, row in df_raw.iterrows():
+                        numeric_count = sum(1 for v in row.values if pd.notna(v) and isinstance(v, (int, float)))
+                        if numeric_count >= 1:
+                            # Check if previous row looks like header
+                            if idx > 0:
+                                prev_row = df_raw.iloc[idx-1]
+                                prev_str = ' '.join([str(v).lower() for v in prev_row.values if pd.notna(v)])
+                                if any(term in prev_str for term in ['price', 'sub-d', 'retail', 'unit']):
+                                    header_row = idx - 1
+                                    break
+                
+                # Default to row 0 if no header found
+                if header_row is None:
+                    header_row = 0
+                
+                # Re-read with correct header
+                df = pd.read_excel(xl, sheet_name=sheet_name, header=header_row)
                 
                 # Normalize column names
                 df.columns = [str(col).strip().lower() for col in df.columns]
                 
-                # Find product code column
+                # Find columns
                 code_col = None
-                for col in df.columns:
-                    if any(x in col for x in ['product code', 'sap code', 'sensor product code', 'product name', 'model']):
-                        code_col = col
-                        break
-                
-                # Find description column
                 desc_col = None
-                for col in df.columns:
-                    if 'description' in col:
-                        desc_col = col
-                        break
-                
-                # Find price column
                 price_col = None
-                for col in df.columns:
-                    if any(x in col for x in ['unit price', 'price', 'sub-d', 'retail', 'cost']):
-                        price_col = col
-                        break
-                
-                # Find category/series column
                 category_col = None
-                for col in df.columns:
-                    if any(x in col for x in ['series', 'category', 'type']):
-                        category_col = col
-                        break
-                
-                # Find lens column
                 lens_col = None
+                
                 for col in df.columns:
-                    if 'lens' in col:
+                    col_lower = col.lower()
+                    # Product code
+                    if code_col is None and any(x in col_lower for x in ['sensor product code', 'product name', 'sap code', 'product code', 'model']):
+                        code_col = col
+                    # Description
+                    if desc_col is None and 'description' in col_lower:
+                        desc_col = col
+                    # Price - prefer sub-d for Sensor, unit price for Hikvision
+                    if any(x in col_lower for x in ['sub-d', 'unit price']):
+                        price_col = col
+                    elif price_col is None and any(x in col_lower for x in ['price', 'retail', 'cost']):
+                        price_col = col
+                    # Category
+                    if category_col is None and any(x in col_lower for x in ['series', 'category']):
+                        category_col = col
+                    # Lens
+                    if lens_col is None and 'lens' in col_lower:
                         lens_col = col
-                        break
                 
-                if not code_col and not desc_col:
-                    continue
-                
-                # Use product name as code if no separate code column
-                if not code_col and 'product name' in df.columns:
-                    code_col = 'product name'
-                
-                # Fallback: try numbered columns
-                if not code_col:
-                    for i, col in enumerate(df.columns):
-                        if 'unnamed' in col and i > 0:
-                            code_col = col
-                            break
-                
-                if not price_col:
-                    # Try last numeric column
-                    for col in reversed(df.columns.tolist()):
-                        if 'unnamed' in col:
+                # If no price column found, try finding unnamed numeric columns
+                if price_col is None:
+                    for col in df.columns:
+                        if 'unnamed' in col.lower():
                             try:
-                                if pd.to_numeric(df[col], errors='coerce').notna().any():
+                                numeric_vals = pd.to_numeric(df[col], errors='coerce')
+                                if numeric_vals.notna().sum() > 5 and numeric_vals.mean() > 10:
                                     price_col = col
                                     break
                             except:
                                 continue
                 
                 if not code_col or not price_col:
+                    logging.info(f"Skipping sheet {sheet_name}: code_col={code_col}, price_col={price_col}")
                     continue
                 
-                current_category = None
+                current_category = sheet_name  # Use sheet name as default category
                 
                 for idx, row in df.iterrows():
                     try:
@@ -179,33 +185,40 @@ def parse_excel_file(file_content: bytes, file_name: str, vendor_id: str, vendor
                         # Update category if found
                         if category_col and pd.notna(row.get(category_col)):
                             cat_val = str(row.get(category_col)).strip()
-                            if cat_val and len(cat_val) > 2:
+                            if cat_val and len(cat_val) > 2 and cat_val.lower() not in ['nan', 'none']:
                                 current_category = cat_val
                         
                         # Skip if no valid product code
-                        if not product_code or product_code.lower() in ['nan', 'none', '', 'series', 'category']:
+                        if not product_code or product_code.lower() in ['nan', 'none', '', 'series', 'category', 'supplier code']:
                             continue
                         
-                        # Skip header rows
-                        if any(x in product_code.lower() for x in ['product code', 'sap code', 'sensor product', 'product name', 'series']):
-                            continue
+                        # Skip header-like rows
+                        skip_terms = ['product code', 'sap code', 'sensor product', 'product name', 'series', 'supplier code', 
+                                     'analogue', 'turbo camera', 'bullet camera', 'dome camera', 'nvr', 'dvr']
+                        if any(x in product_code.lower() for x in skip_terms):
+                            # But allow if it looks like a real product code (contains DS-, has numbers)
+                            if not (re.search(r'DS-|[0-9]{6,}', product_code)):
+                                continue
                         
                         # Parse price
                         if pd.isna(price_val):
                             continue
                         
                         try:
-                            price = float(str(price_val).replace(',', '').replace('R', '').replace(' ', ''))
-                            if price <= 0:
+                            price_str = str(price_val).replace(',', '').replace('R', '').replace(' ', '')
+                            price = float(price_str)
+                            if price <= 0 or price > 10000000:  # Skip invalid prices
                                 continue
                         except:
                             continue
                         
                         # Get lens info
                         lens = str(row.get(lens_col, '')).strip() if lens_col and pd.notna(row.get(lens_col)) else None
+                        if lens and lens.lower() in ['nan', 'none']:
+                            lens = None
                         
                         # Use product code as description if no description
-                        if not description:
+                        if not description or description.lower() in ['nan', 'none']:
                             description = product_code
                         
                         product = {
@@ -223,7 +236,7 @@ def parse_excel_file(file_content: bytes, file_name: str, vendor_id: str, vendor
                         products.append(product)
                         
                     except Exception as e:
-                        logging.warning(f"Error parsing row {idx}: {e}")
+                        logging.warning(f"Error parsing row {idx} in sheet {sheet_name}: {e}")
                         continue
                         
             except Exception as e:
@@ -234,6 +247,7 @@ def parse_excel_file(file_content: bytes, file_name: str, vendor_id: str, vendor
         logging.error(f"Error parsing Excel file: {e}")
         raise HTTPException(status_code=400, detail=f"Failed to parse Excel file: {str(e)}")
     
+    logging.info(f"Parsed {len(products)} products from {file_name}")
     return products
 
 
