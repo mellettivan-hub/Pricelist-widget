@@ -1,13 +1,12 @@
 import { useState, useCallback } from "react";
 import axios from "axios";
-import { MagnifyingGlass, X, Trophy, CaretDown, CaretUp } from "@phosphor-icons/react";
+import { Trophy, CaretDown, CaretUp } from "@phosphor-icons/react";
 import { toast } from "sonner";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const Search = () => {
   const [query, setQuery] = useState("");
-  const [searchType, setSearchType] = useState("both");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -25,7 +24,7 @@ const Search = () => {
 
     try {
       const response = await axios.get(`${API}/search`, {
-        params: { q: query, search_type: searchType }
+        params: { q: query, search_type: "both" }
       });
       setResults(response.data.results);
       
@@ -40,7 +39,7 @@ const Search = () => {
     } finally {
       setLoading(false);
     }
-  }, [query, searchType]);
+  }, [query]);
 
   const handleKeyPress = (e) => {
     if (e.key === "Enter") {
@@ -94,84 +93,63 @@ const Search = () => {
       </div>
 
       <div className="p-6">
-        {/* Search Box */}
+        {/* Simple Search Box */}
         <div className="card mb-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <MagnifyingGlass 
-                size={20} 
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" 
-              />
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Search by product code or description..."
-                className="search-input pl-12 pr-10"
-                data-testid="search-input"
-              />
-              {query && (
-                <button 
-                  onClick={clearSearch}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 z-10"
-                  data-testid="clear-search"
-                >
-                  <X size={18} />
-                </button>
-              )}
-            </div>
-            
-            <select
-              value={searchType}
-              onChange={(e) => setSearchType(e.target.value)}
-              className="search-input w-full md:w-48"
-              data-testid="search-type-select"
-            >
-              <option value="both">Code & Description</option>
-              <option value="code">Product Code Only</option>
-              <option value="description">Description Only</option>
-            </select>
+          <div className="flex gap-4">
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Enter product code or description..."
+              className="flex-1 border border-zinc-300 px-4 py-3 text-base focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+              data-testid="search-input"
+              autoComplete="off"
+            />
             
             <button
               onClick={handleSearch}
               disabled={loading || !query.trim()}
-              className="btn-primary flex items-center justify-center gap-2 min-w-[120px]"
+              className="btn-primary px-8"
               data-testid="search-button"
             >
-              {loading ? (
-                <span className="font-mono">...</span>
-              ) : (
-                <>
-                  <MagnifyingGlass size={18} weight="bold" />
-                  Search
-                </>
-              )}
+              {loading ? "..." : "Search"}
             </button>
+            
+            {query && (
+              <button
+                onClick={clearSearch}
+                className="btn-secondary px-4"
+                data-testid="clear-search"
+              >
+                Clear
+              </button>
+            )}
           </div>
           
           <p className="text-xs text-zinc-500 mt-3">
-            Tip: Search for product codes like "DS-2CD" or descriptions like "bullet camera"
+            Search for product codes like "DS-2CD" or descriptions like "bullet camera"
           </p>
         </div>
 
-        {/* Results */}
+        {/* Loading */}
         {loading && (
           <div className="loading-bar mb-4">
             <div className="loading-bar-inner" />
           </div>
         )}
 
+        {/* No Results */}
         {searched && !loading && results.length === 0 && (
           <div className="card">
             <div className="empty-state">
-              <MagnifyingGlass size={48} className="empty-state-icon mx-auto" />
               <p className="empty-state-title">No products found</p>
-              <p className="text-sm">Try a different search term or adjust your search type</p>
+              <p className="text-sm">Try a different search term</p>
             </div>
           </div>
         )}
 
+        {/* Results Table */}
         {results.length > 0 && (
           <div className="card p-0 overflow-hidden">
             <div className="bg-zinc-50 px-4 py-3 border-b border-zinc-200 flex items-center justify-between">
