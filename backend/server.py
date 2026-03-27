@@ -99,9 +99,11 @@ def detect_columns(df):
     price_col = None
     
     for col, col_lower in columns_lower.items():
-        # Product code detection
+        # Product code detection - expanded keywords
         if code_col is None:
-            if any(x in col_lower for x in ['product code', 'product name', 'sap code', 'sensor product', 'model', 'sku', 'item code', 'part number', 'part no']):
+            if any(x in col_lower for x in ['product code', 'product name', 'sap code', 'sensor product', 
+                                             'model', 'sku', 'item code', 'part number', 'part no',
+                                             'ef code', 'article', 'item no', 'stock code']):
                 code_col = col
         
         # Description detection
@@ -109,8 +111,9 @@ def detect_columns(df):
             if 'description' in col_lower or 'desc' in col_lower:
                 desc_col = col
         
-        # Price detection - prefer specific price columns
-        if any(x in col_lower for x in ['sub-d', 'sub d', 'unit price', 'sell price', 'cost price', 'dealer']):
+        # Price detection - prefer selling price columns
+        if any(x in col_lower for x in ['suggested selling', 'selling price', 'sell price', 
+                                         'sub-d', 'sub d', 'unit price', 'dealer price', 'reseller']):
             price_col = col
         elif price_col is None and any(x in col_lower for x in ['price', 'amount', 'cost', 'retail']):
             price_col = col
@@ -118,17 +121,19 @@ def detect_columns(df):
     # Fallback: try to find numeric column that looks like price
     if price_col is None:
         for col in df.columns:
-            if 'unnamed' in col.lower():
-                try:
-                    numeric_vals = pd.to_numeric(df[col], errors='coerce')
-                    valid_count = numeric_vals.notna().sum()
-                    if valid_count > 3:
-                        mean_val = numeric_vals.mean()
-                        if 10 < mean_val < 1000000:  # Reasonable price range
-                            price_col = col
-                            break
-                except:
-                    continue
+            col_lower = col.lower()
+            if 'unnamed' in col_lower:
+                continue  # Skip unnamed columns for price detection
+            try:
+                numeric_vals = pd.to_numeric(df[col], errors='coerce')
+                valid_count = numeric_vals.notna().sum()
+                if valid_count > 3:
+                    mean_val = numeric_vals.mean()
+                    if 10 < mean_val < 1000000:  # Reasonable price range
+                        price_col = col
+                        break
+            except:
+                continue
     
     return code_col, desc_col, price_col
 
@@ -172,6 +177,33 @@ async def delete_vendor(vendor_id: str):
     return {"message": "Vendor deleted"}
 
 
+# Helper function to find the actual header row
+def find_header_row(xl, sheet_name, max_rows=20):
+    """Find the row that contains actual column headers"""
+    df_raw = pd.read_excel(xl, sheet_name=sheet_name, header=None, nrows=max_rows)
+    
+    # Keywords that indicate a header row
+    header_keywords = ['code', 'product', 'description', 'price', 'model', 'sku', 
+                       'item', 'name', 'cost', 'selling', 'retail', 'dealer']
+    
+    best_row = 0
+    best_score = 0
+    
+    for idx, row in df_raw.iterrows():
+        row_str = ' '.join([str(v).lower() for v in row.values if pd.notna(v)])
+        score = sum(1 for kw in header_keywords if kw in row_str)
+        
+        # Check if row has multiple non-empty string values (likely headers)
+        non_empty_strs = sum(1 for v in row.values if pd.notna(v) and isinstance(v, str) and len(str(v)) > 2)
+        score += non_empty_strs * 0.5
+        
+        if score > best_score:
+            best_score = score
+            best_row = idx
+    
+    return best_row if best_score >= 2 else 0
+
+
 # Excel Preview for Column Mapping
 @api_router.post("/upload/preview")
 async def preview_excel(file: UploadFile = File(...)):
@@ -197,7 +229,9 @@ async def preview_excel(file: UploadFile = File(...)):
             if sheet_name.lower().strip() in skip_sheets:
                 continue
             try:
-                df = pd.read_excel(xl, sheet_name=sheet_name, nrows=100)
+                # Find the actual header row
+                header_row = find_header_row(xl, sheet_name)
+                df = pd.read_excel(xl, sheet_name=sheet_name, header=header_row, nrows=100)
                 if len(df) > 0:
                     sheets_info.append({
                         "sheet_name": sheet_name,
@@ -208,22 +242,27 @@ async def preview_excel(file: UploadFile = File(...)):
             except:
                 continue
         
-        # Get sample from first valid sheet for column preview
+        # Get sample from first valid sheet for column preview (with proper header detection)
         sample_columns = []
         for sheet_name in xl.sheet_names:
             if sheet_name.lower().strip() in skip_sheets:
                 continue
             try:
-                df = pd.read_excel(xl, sheet_name=sheet_name, nrows=5)
+                header_row = find_header_row(xl, sheet_name)
+                df = pd.read_excel(xl, sheet_name=sheet_name, header=header_row, nrows=5)
                 for col in df.columns:
                     col_name = str(col).strip()
+                    # Skip unnamed columns or columns that look like row numbers
+                    if 'unnamed' in col_name.lower():
+                        continue
                     sample_values = df[col].dropna().head(3).tolist()
                     sample_values = [str(v)[:50] for v in sample_values]
                     sample_columns.append({
                         "name": col_name,
                         "samples": sample_values
                     })
-                break
+                if sample_columns:  # Only break if we found valid columns
+                    break
             except:
                 continue
         
@@ -265,7 +304,9 @@ async def upload_with_mapping(data: UploadWithMapping):
                 continue
                 
             try:
-                df = pd.read_excel(xl, sheet_name=sheet_name)
+                # Find actual header row for this sheet
+                header_row = find_header_row(xl, sheet_name)
+                df = pd.read_excel(xl, sheet_name=sheet_name, header=header_row)
                 df.columns = [str(col).strip() for col in df.columns]
                 
                 # Check if mapped columns exist in this sheet
@@ -434,7 +475,9 @@ async def upload_auto(
                 continue
                 
             try:
-                df = pd.read_excel(xl, sheet_name=sheet_name)
+                # Find actual header row for this sheet
+                header_row = find_header_row(xl, sheet_name)
+                df = pd.read_excel(xl, sheet_name=sheet_name, header=header_row)
                 
                 # Auto-detect columns
                 code_col, desc_col, price_col = detect_columns(df)
