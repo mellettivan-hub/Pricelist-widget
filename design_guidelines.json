@@ -1,0 +1,131 @@
+{
+  "theme_and_archetype": {
+    "domain": "B2B Price Check / Dashboard",
+    "theme": "Light",
+    "archetype": "4 (Swiss & High-Contrast)",
+    "mood": "Objective, rigid, functional, high-density, authoritative."
+  },
+  "typography": {
+    "fonts": {
+      "headings": "Chivo",
+      "body": "IBM Plex Sans",
+      "monospace": "IBM Plex Mono"
+    },
+    "hierarchy": {
+      "h1": "text-4xl tracking-tight font-black",
+      "h2": "text-2xl tracking-tight font-bold",
+      "h3": "text-xl font-bold",
+      "h4": "text-lg font-semibold",
+      "body": "text-sm",
+      "small_labels": "text-xs uppercase tracking-[0.2em] font-semibold",
+      "data_numbers": "font-mono text-sm tracking-tight"
+    }
+  },
+  "colors": {
+    "background": {
+      "app": "#F4F4F5",
+      "surface": "#FFFFFF",
+      "header": "#FFFFFF"
+    },
+    "text": {
+      "primary": "#09090B",
+      "secondary": "#52525B",
+      "tertiary": "#A1A1AA"
+    },
+    "brand": {
+      "primary": "#002FA7",
+      "primary_hover": "#00227A",
+      "on_primary": "#FFFFFF"
+    },
+    "semantic": {
+      "success": "#16A34A",
+      "success_bg": "#DCFCE7",
+      "danger": "#FF3B30",
+      "danger_bg": "#FEE2E2",
+      "warning": "#FFCC00"
+    },
+    "border": {
+      "default": "#E4E4E7",
+      "focus": "#002FA7"
+    }
+  },
+  "spacing_and_layout": {
+    "philosophy": "The 'Control Room' Grid. Dense, data-heavy, every pixel utilized.",
+    "grid": {
+      "base": "grid-cols-1 md:grid-cols-4 lg:grid-cols-12 gap-1",
+      "dashboard_layout": "Sidebar (col-span-2) + Main Content (col-span-10)"
+    },
+    "spacing_scale": {
+      "table_cell": "px-3 py-2",
+      "container_padding": "p-6",
+      "widget_gap": "gap-4"
+    },
+    "alignment": {
+      "text": "left-aligned",
+      "numbers": "right-aligned",
+      "headers": "left-aligned for text, right-aligned for numbers"
+    }
+  },
+  "surfaces": {
+    "style": "Grid Borders (The 'Technical' Look). Expose the skeleton. No glassmorphism in this dashboard.",
+    "borders": "1px solid #E4E4E7 everywhere. border-collapse for widgets.",
+    "radius": "rounded-none or rounded-sm (max 4px). No pills or large radii.",
+    "shadows": "None. Use 1px borders and distinct background colors for hierarchy."
+  },
+  "components": {
+    "buttons": {
+      "style": "Flat, pure rectangles. High contrast.",
+      "primary": "bg-[#002FA7] text-white hover:bg-[#00227A] rounded-none",
+      "secondary": "bg-transparent border border-zinc-300 text-zinc-900 hover:bg-zinc-100 rounded-none"
+    },
+    "inputs": {
+      "style": "Sharp edges, flat backgrounds. Focus states are critical.",
+      "default": "border-zinc-300 rounded-none bg-white",
+      "focus": "focus:ring-2 focus:ring-[#002FA7] focus:border-transparent"
+    },
+    "tables": {
+      "style": "Extreme density. border-collapse.",
+      "header": "bg-zinc-50 border-b-2 border-zinc-200 text-zinc-500 uppercase text-xs font-semibold",
+      "row": "border-b border-zinc-200 hover:bg-zinc-50 transition-colors",
+      "lowest_price_highlight": "bg-green-50 text-green-700 font-bold"
+    },
+    "cards": {
+      "style": "Flat, unshadowed, bordered containers.",
+      "classes": "bg-white border border-zinc-200 rounded-none p-4"
+    }
+  },
+  "icons": {
+    "library": "@phosphor-icons/react",
+    "usage": "Use Phosphor Icons (regular weight) for dense dashboard scannability. Minimal scale (16px - 20px)."
+  },
+  "motion_and_interactions": {
+    "hover": "Instant or very fast transitions (0.15s). Efficiency > Flourish.",
+    "focus": "Strong blue focus rings (2px) on all interactive elements.",
+    "loading": "Use monospace ASCII loaders or sharp linear progress bars instead of spinning circles."
+  },
+  "media": {
+    "images": [
+      {
+        "category": "login_background",
+        "url": "https://static.prod-images.emergentagent.com/jobs/091e8f2f-c43e-46c8-8b2f-293bd69ec1ef/images/595b299cd41c10c6820e93ba2df65b5f11cdc5f5ad86ac18f29a571483ca5a74.png",
+        "description": "Abstract geometric minimal pattern with architectural precision in black, white, and grey. Used for the split-screen login page background to reinforce the enterprise/technical feel."
+      }
+    ]
+  },
+  "accessibility": {
+    "contrast": "Strict APCA/WCAG AA compliance. Text must be #09090B on #FFFFFF.",
+    "focus_management": "Visible focus states mandatory on all inputs and buttons.",
+    "data_testid": "MANDATORY on all interactive and key informational elements (buttons, links, form inputs, menus, error messages, user balances, confirmation text)."
+  },
+  "instructions_to_main_agent": [
+    "Install `@phosphor-icons/react` for icons.",
+    "Install fonts `Chivo`, `IBM Plex Sans`, and `IBM Plex Mono` via Google Fonts in index.html or layout wrapper.",
+    "Override default Shadcn border-radius (`--radius`) to `0rem` or `0.125rem` (2px) globally in tailwind.config or index.css.",
+    "The layout should feature a sidebar navigation and a wide main content area. Use a 'Control Room' grid layout.",
+    "For the main 'Price Check' view, prioritize the search bar and the results table. The table should prominently highlight the row/cell with the lowest price (e.g., using the semantic success colors).",
+    "Use pure HTML/Tailwind for structural containers to achieve the 'Grid Borders' look (visible 1px borders everywhere).",
+    "In the file upload area, use a drag-and-drop zone with a dashed border and monospace instructions.",
+    "Ensure the price history tracking view uses a clear line chart (Recharts) with sharp, no-curve lines (`type='linear'`).",
+    "Do NOT use transparent/glassmorphism surfaces. Everything must be solid for maximum readability."
+  ]
+}
