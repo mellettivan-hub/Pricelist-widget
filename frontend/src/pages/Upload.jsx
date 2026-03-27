@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import { UploadSimple, FileXls, X, Check, Warning } from "@phosphor-icons/react";
+import { UploadSimple, FileXls, Check, Warning, ArrowRight, Table } from "@phosphor-icons/react";
 import { toast } from "sonner";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -10,9 +10,18 @@ const Upload = () => {
   const [selectedVendor, setSelectedVendor] = useState("");
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const [dragActive, setDragActive] = useState(false);
   const [uploadResult, setUploadResult] = useState(null);
   const fileInputRef = useRef(null);
+  
+  // Column mapping state
+  const [previewData, setPreviewData] = useState(null);
+  const [selectedSheet, setSelectedSheet] = useState("");
+  const [columnMapping, setColumnMapping] = useState({
+    product_code_col: "",
+    description_col: "",
+    price_col: ""
+  });
+  const [step, setStep] = useState(1); // 1: Upload, 2: Map Columns, 3: Confirm
 
   useEffect(() => {
     fetchVendors();
@@ -27,50 +36,22 @@ const Upload = () => {
     }
   };
 
-  const handleDrag = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  }, []);
-
-  const handleDrop = useCallback((e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
+  const handleFileSelect = async (e) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
     
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      validateAndSetFile(e.dataTransfer.files[0]);
-    }
-  }, []);
-
-  const handleFileSelect = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      validateAndSetFile(e.target.files[0]);
-    }
-  };
-
-  const validateAndSetFile = (selectedFile) => {
-    const validTypes = [
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/vnd.ms-excel'
-    ];
-    
-    if (!validTypes.includes(selectedFile.type) && 
-        !selectedFile.name.endsWith('.xlsx') && 
-        !selectedFile.name.endsWith('.xls')) {
+    if (!selectedFile.name.endsWith('.xlsx') && !selectedFile.name.endsWith('.xls')) {
       toast.error("Please upload an Excel file (.xlsx or .xls)");
       return;
     }
     
     setFile(selectedFile);
     setUploadResult(null);
+    setStep(1);
+    setPreviewData(null);
   };
 
-  const handleUpload = async () => {
+  const handlePreview = async () => {
     if (!file) {
       toast.error("Please select a file");
       return;
@@ -81,26 +62,59 @@ const Upload = () => {
       return;
     }
 
-    const vendor = vendors.find(v => v.id === selectedVendor);
-    if (!vendor) {
-      toast.error("Invalid vendor selected");
-      return;
-    }
-
     setUploading(true);
-    setUploadResult(null);
 
     const formData = new FormData();
     formData.append("file", file);
 
     try {
-      const response = await axios.post(
-        `${API}/upload?vendor_id=${selectedVendor}&vendor_name=${encodeURIComponent(vendor.name)}`,
-        formData,
-        {
-          headers: { "Content-Type": "multipart/form-data" }
+      const response = await axios.post(`${API}/upload/preview`, formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+
+      setPreviewData(response.data);
+      
+      if (response.data.sheets.length > 0) {
+        setSelectedSheet(response.data.sheets[0].sheet_name);
+      }
+      
+      setStep(2);
+      toast.success("File loaded! Now map your columns.");
+      
+    } catch (error) {
+      console.error("Preview failed:", error);
+      toast.error(error.response?.data?.detail || "Failed to preview file");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleUploadMapped = async () => {
+    if (!columnMapping.product_code_col || !columnMapping.price_col) {
+      toast.error("Please select Product Code and Price columns");
+      return;
+    }
+
+    const vendor = vendors.find(v => v.id === selectedVendor);
+    if (!vendor) {
+      toast.error("Invalid vendor");
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      const response = await axios.post(`${API}/upload/mapped`, {
+        vendor_id: selectedVendor,
+        vendor_name: vendor.name,
+        file_id: previewData.file_id,
+        mapping: {
+          product_code_col: columnMapping.product_code_col,
+          description_col: columnMapping.description_col || null,
+          price_col: columnMapping.price_col,
+          sheet_name: selectedSheet
         }
-      );
+      });
 
       setUploadResult({
         success: true,
@@ -109,27 +123,36 @@ const Upload = () => {
       });
       
       toast.success(`Successfully imported ${response.data.products_imported} products`);
+      setStep(3);
+      
+      // Reset form
       setFile(null);
+      setPreviewData(null);
+      setColumnMapping({ product_code_col: "", description_col: "", price_col: "" });
       
     } catch (error) {
       console.error("Upload failed:", error);
-      const errorMessage = error.response?.data?.detail || "Upload failed";
-      setUploadResult({
-        success: false,
-        message: errorMessage
-      });
-      toast.error(errorMessage);
+      toast.error(error.response?.data?.detail || "Upload failed");
     } finally {
       setUploading(false);
     }
   };
 
-  const clearFile = () => {
+  const resetUpload = () => {
     setFile(null);
+    setPreviewData(null);
     setUploadResult(null);
+    setStep(1);
+    setColumnMapping({ product_code_col: "", description_col: "", price_col: "" });
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+  };
+
+  const getCurrentSheetColumns = () => {
+    if (!previewData || !selectedSheet) return [];
+    const sheet = previewData.sheets.find(s => s.sheet_name === selectedSheet);
+    return sheet?.columns || [];
   };
 
   return (
@@ -137,150 +160,265 @@ const Upload = () => {
       {/* Header */}
       <div className="page-header">
         <h1 className="page-title">Upload Price List</h1>
-        <p className="page-subtitle">Import vendor price lists from Excel files</p>
+        <p className="page-subtitle">Import vendor price lists with column mapping</p>
       </div>
 
       <div className="p-6">
-        <div className="max-w-2xl mx-auto">
-          {/* Vendor Selection */}
-          <div className="card mb-6">
-            <label className="text-xs uppercase tracking-widest font-semibold text-zinc-500 mb-2 block">
-              Select Vendor
-            </label>
-            <select
-              value={selectedVendor}
-              onChange={(e) => setSelectedVendor(e.target.value)}
-              className="search-input w-full"
-              data-testid="vendor-select"
-            >
-              <option value="">-- Choose a vendor --</option>
-              {vendors.map((vendor) => (
-                <option key={vendor.id} value={vendor.id}>
-                  {vendor.name}
-                </option>
-              ))}
-            </select>
-            
-            {vendors.length === 0 && (
-              <p className="text-sm text-zinc-500 mt-2">
-                No vendors found. Please add a vendor first.
-              </p>
-            )}
-          </div>
-
-          {/* File Upload Zone */}
-          <div className="card mb-6">
-            <label className="text-xs uppercase tracking-widest font-semibold text-zinc-500 mb-2 block">
-              Price List File
-            </label>
-            
-            <div
-              className={`dropzone ${dragActive ? "active" : ""} ${file ? "border-green-500 bg-green-50" : ""}`}
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              data-testid="dropzone"
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={handleFileSelect}
-                className="hidden"
-                data-testid="file-input"
-              />
-              
-              {file ? (
-                <div className="flex items-center gap-4">
-                  <FileXls size={40} weight="light" className="text-green-600" />
-                  <div className="flex-1 text-left">
-                    <p className="font-mono text-sm font-semibold">{file.name}</p>
-                    <p className="text-xs text-zinc-500">
-                      {(file.size / 1024 / 1024).toFixed(2)} MB
-                    </p>
-                  </div>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      clearFile();
-                    }}
-                    className="p-2 hover:bg-zinc-100"
-                    data-testid="clear-file"
-                  >
-                    <X size={20} className="text-zinc-500" />
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <UploadSimple size={40} weight="light" className="text-zinc-400 mx-auto mb-4" />
-                  <p className="font-mono text-sm text-zinc-600">
-                    DROP EXCEL FILE HERE
-                  </p>
-                  <p className="text-xs text-zinc-400 mt-2">
-                    or click to browse (.xlsx, .xls)
-                  </p>
-                </>
-              )}
+        <div className="max-w-4xl mx-auto">
+          
+          {/* Step Indicator */}
+          <div className="flex items-center justify-center mb-8">
+            <div className={`flex items-center ${step >= 1 ? 'text-blue-600' : 'text-zinc-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step >= 1 ? 'bg-blue-600 text-white' : 'bg-zinc-200'}`}>1</div>
+              <span className="ml-2 font-medium">Upload</span>
+            </div>
+            <ArrowRight size={20} className="mx-4 text-zinc-300" />
+            <div className={`flex items-center ${step >= 2 ? 'text-blue-600' : 'text-zinc-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step >= 2 ? 'bg-blue-600 text-white' : 'bg-zinc-200'}`}>2</div>
+              <span className="ml-2 font-medium">Map Columns</span>
+            </div>
+            <ArrowRight size={20} className="mx-4 text-zinc-300" />
+            <div className={`flex items-center ${step >= 3 ? 'text-green-600' : 'text-zinc-400'}`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step >= 3 ? 'bg-green-600 text-white' : 'bg-zinc-200'}`}>3</div>
+              <span className="ml-2 font-medium">Done</span>
             </div>
           </div>
 
-          {/* Upload Result */}
-          {uploadResult && (
-            <div 
-              className={`card mb-6 ${uploadResult.success ? "border-green-500 bg-green-50" : "border-red-500 bg-red-50"}`}
-              data-testid="upload-result"
-            >
-              <div className="flex items-start gap-3">
-                {uploadResult.success ? (
-                  <Check size={24} weight="bold" className="text-green-600 flex-shrink-0" />
-                ) : (
-                  <Warning size={24} weight="bold" className="text-red-600 flex-shrink-0" />
-                )}
-                <div>
-                  <p className={`font-semibold ${uploadResult.success ? "text-green-700" : "text-red-700"}`}>
-                    {uploadResult.message}
-                  </p>
-                  {uploadResult.products && (
-                    <p className="text-sm text-green-600 mt-1">
-                      {uploadResult.products} products imported successfully
-                    </p>
+          {/* Step 1: Select File & Vendor */}
+          {step === 1 && (
+            <>
+              <div className="card mb-6">
+                <label className="text-xs uppercase tracking-widest font-semibold text-zinc-500 mb-2 block">
+                  1. Select Vendor
+                </label>
+                <select
+                  value={selectedVendor}
+                  onChange={(e) => setSelectedVendor(e.target.value)}
+                  className="w-full border border-zinc-300 px-4 py-3 text-base focus:outline-none focus:border-blue-600"
+                  data-testid="vendor-select"
+                >
+                  <option value="">-- Choose a vendor --</option>
+                  {vendors.map((vendor) => (
+                    <option key={vendor.id} value={vendor.id}>
+                      {vendor.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="card mb-6">
+                <label className="text-xs uppercase tracking-widest font-semibold text-zinc-500 mb-2 block">
+                  2. Select Excel File
+                </label>
+                
+                <div 
+                  className={`border-2 border-dashed p-8 text-center cursor-pointer transition-colors ${file ? 'border-green-500 bg-green-50' : 'border-zinc-300 hover:border-blue-500'}`}
+                  onClick={() => fileInputRef.current?.click()}
+                  data-testid="dropzone"
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    data-testid="file-input"
+                  />
+                  
+                  {file ? (
+                    <div className="flex items-center justify-center gap-4">
+                      <FileXls size={40} weight="light" className="text-green-600" />
+                      <div className="text-left">
+                        <p className="font-mono text-sm font-semibold">{file.name}</p>
+                        <p className="text-xs text-zinc-500">
+                          {(file.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <UploadSimple size={40} className="text-zinc-400 mx-auto mb-4" />
+                      <p className="font-medium text-zinc-600">Click to select Excel file</p>
+                      <p className="text-xs text-zinc-400 mt-2">(.xlsx, .xls)</p>
+                    </>
                   )}
                 </div>
               </div>
+
+              <button
+                onClick={handlePreview}
+                disabled={!file || !selectedVendor || uploading}
+                className="btn-primary w-full flex items-center justify-center gap-2"
+                data-testid="preview-button"
+              >
+                {uploading ? "Loading..." : "Next: Map Columns"}
+                <ArrowRight size={20} />
+              </button>
+            </>
+          )}
+
+          {/* Step 2: Column Mapping */}
+          {step === 2 && previewData && (
+            <>
+              <div className="card mb-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Table size={24} className="text-blue-600" />
+                  <h2 className="font-bold text-lg">Map Your Columns</h2>
+                </div>
+                
+                <p className="text-sm text-zinc-600 mb-4">
+                  Select which columns contain your product data. We'll use this to import all products correctly.
+                </p>
+
+                {/* Sheet Selection */}
+                {previewData.sheets.length > 1 && (
+                  <div className="mb-4">
+                    <label className="text-xs uppercase tracking-widest font-semibold text-zinc-500 mb-2 block">
+                      Select Sheet
+                    </label>
+                    <select
+                      value={selectedSheet}
+                      onChange={(e) => setSelectedSheet(e.target.value)}
+                      className="w-full border border-zinc-300 px-4 py-2"
+                    >
+                      {previewData.sheets.map((sheet) => (
+                        <option key={sheet.sheet_name} value={sheet.sheet_name}>
+                          {sheet.sheet_name} ({sheet.row_count} rows)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Column Mapping */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div>
+                    <label className="text-xs uppercase tracking-widest font-semibold text-zinc-500 mb-2 block">
+                      Product Code Column *
+                    </label>
+                    <select
+                      value={columnMapping.product_code_col}
+                      onChange={(e) => setColumnMapping({...columnMapping, product_code_col: e.target.value})}
+                      className="w-full border border-zinc-300 px-3 py-2 text-sm"
+                      data-testid="product-code-col"
+                    >
+                      <option value="">-- Select --</option>
+                      {getCurrentSheetColumns().map((col) => (
+                        <option key={col.name} value={col.name}>
+                          {col.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs uppercase tracking-widest font-semibold text-zinc-500 mb-2 block">
+                      Description Column
+                    </label>
+                    <select
+                      value={columnMapping.description_col}
+                      onChange={(e) => setColumnMapping({...columnMapping, description_col: e.target.value})}
+                      className="w-full border border-zinc-300 px-3 py-2 text-sm"
+                      data-testid="description-col"
+                    >
+                      <option value="">-- Optional --</option>
+                      {getCurrentSheetColumns().map((col) => (
+                        <option key={col.name} value={col.name}>
+                          {col.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-xs uppercase tracking-widest font-semibold text-zinc-500 mb-2 block">
+                      Price Column *
+                    </label>
+                    <select
+                      value={columnMapping.price_col}
+                      onChange={(e) => setColumnMapping({...columnMapping, price_col: e.target.value})}
+                      className="w-full border border-zinc-300 px-3 py-2 text-sm"
+                      data-testid="price-col"
+                    >
+                      <option value="">-- Select --</option>
+                      {getCurrentSheetColumns().map((col) => (
+                        <option key={col.name} value={col.name}>
+                          {col.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Column Preview */}
+                <div className="bg-zinc-50 border border-zinc-200 p-4 overflow-x-auto">
+                  <p className="text-xs uppercase tracking-widest font-semibold text-zinc-500 mb-3">
+                    Column Preview (Sample Data)
+                  </p>
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-zinc-300">
+                        {getCurrentSheetColumns().map((col) => (
+                          <th key={col.name} className="text-left py-2 px-2 font-semibold text-zinc-700">
+                            {col.name}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[0, 1, 2].map((rowIdx) => (
+                        <tr key={rowIdx} className="border-b border-zinc-200">
+                          {getCurrentSheetColumns().map((col) => (
+                            <td key={col.name} className="py-2 px-2 text-zinc-600 font-mono text-xs">
+                              {col.samples[rowIdx] || '-'}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <button
+                  onClick={resetUpload}
+                  className="btn-secondary flex-1"
+                >
+                  Back
+                </button>
+                <button
+                  onClick={handleUploadMapped}
+                  disabled={!columnMapping.product_code_col || !columnMapping.price_col || uploading}
+                  className="btn-primary flex-1 flex items-center justify-center gap-2"
+                  data-testid="upload-button"
+                >
+                  {uploading ? "Importing..." : "Import Products"}
+                  <Check size={20} />
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Step 3: Success */}
+          {step === 3 && uploadResult && (
+            <div className="card text-center py-12">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Check size={32} weight="bold" className="text-green-600" />
+              </div>
+              <h2 className="font-bold text-xl mb-2">Upload Successful!</h2>
+              <p className="text-zinc-600 mb-6">
+                Imported <strong>{uploadResult.products}</strong> products
+              </p>
+              <button
+                onClick={resetUpload}
+                className="btn-primary"
+              >
+                Upload Another File
+              </button>
             </div>
           )}
 
-          {/* Upload Button */}
-          <button
-            onClick={handleUpload}
-            disabled={!file || !selectedVendor || uploading}
-            className="btn-primary w-full flex items-center justify-center gap-2"
-            data-testid="upload-button"
-          >
-            {uploading ? (
-              <span className="font-mono">UPLOADING...</span>
-            ) : (
-              <>
-                <UploadSimple size={20} weight="bold" />
-                Upload Price List
-              </>
-            )}
-          </button>
-
-          {/* Format Info */}
-          <div className="mt-8 p-4 bg-zinc-100 border border-zinc-200">
-            <h3 className="font-heading font-bold text-sm mb-2">SUPPORTED FORMATS</h3>
-            <ul className="text-xs text-zinc-600 space-y-1 font-mono">
-              <li>+ HIKVISION SA Reseller Price Guide format</li>
-              <li>+ Sensor Security Systems format</li>
-              <li>+ Generic Excel with columns: Product Code, Description, Price</li>
-            </ul>
-            <p className="text-xs text-zinc-500 mt-3">
-              The system will automatically detect the file format and extract product data.
-            </p>
-          </div>
         </div>
       </div>
     </div>

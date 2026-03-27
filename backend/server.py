@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException, Query
+from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException, Query, Body
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -6,12 +6,13 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import uuid
 from datetime import datetime, timezone
 import pandas as pd
 import io
 import re
+from rapidfuzz import fuzz, process
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -51,204 +52,44 @@ class PriceList(BaseModel):
     product_count: int = 0
     status: str = "active"
 
-class Product(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    product_code: str
-    description: str
-    price: float
+class ColumnMapping(BaseModel):
+    product_code_col: str
+    description_col: Optional[str] = None
+    price_col: str
+    sheet_name: str
+
+class UploadWithMapping(BaseModel):
     vendor_id: str
     vendor_name: str
-    price_list_id: str
-    category: Optional[str] = None
-    lens: Optional[str] = None
-    upload_date: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    file_id: str
+    mapping: ColumnMapping
 
-class PriceHistory(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    product_code: str
-    description: str
-    price: float
-    vendor_id: str
-    vendor_name: str
-    recorded_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
-class SearchResult(BaseModel):
-    product_code: str
-    description: str
-    price: float
-    vendor_name: str
-    vendor_id: str
-    category: Optional[str] = None
-    is_cheapest: bool = False
+# Temporary storage for uploaded files awaiting column mapping
+temp_files: Dict[str, bytes] = {}
 
-# Helper function to parse Excel files
-def parse_excel_file(file_content: bytes, file_name: str, vendor_id: str, vendor_name: str, price_list_id: str) -> List[dict]:
-    products = []
-    
-    try:
-        xl = pd.ExcelFile(io.BytesIO(file_content))
-        
-        for sheet_name in xl.sheet_names:
-            try:
-                # Skip non-product sheets
-                skip_sheets = ['home page', 'index', 'services', 'notes', 'co. details', 'co. details ', 'quote', 'in stock pricelist']
-                if sheet_name.lower().strip() in skip_sheets:
-                    continue
-                
-                # Read without header first to find actual header row
-                df_raw = pd.read_excel(xl, sheet_name=sheet_name, header=None, nrows=15)
-                
-                # Find header row by looking for key terms
-                header_row = None
-                for idx, row in df_raw.iterrows():
-                    row_str = ' '.join([str(v).lower() for v in row.values if pd.notna(v)])
-                    if any(term in row_str for term in ['product code', 'product name', 'sensor product', 'sap code', 'description']):
-                        header_row = idx
-                        break
-                
-                if header_row is None:
-                    # Try to detect based on numeric price patterns
-                    for idx, row in df_raw.iterrows():
-                        numeric_count = sum(1 for v in row.values if pd.notna(v) and isinstance(v, (int, float)))
-                        if numeric_count >= 1:
-                            # Check if previous row looks like header
-                            if idx > 0:
-                                prev_row = df_raw.iloc[idx-1]
-                                prev_str = ' '.join([str(v).lower() for v in prev_row.values if pd.notna(v)])
-                                if any(term in prev_str for term in ['price', 'sub-d', 'retail', 'unit']):
-                                    header_row = idx - 1
-                                    break
-                
-                # Default to row 0 if no header found
-                if header_row is None:
-                    header_row = 0
-                
-                # Re-read with correct header
-                df = pd.read_excel(xl, sheet_name=sheet_name, header=header_row)
-                
-                # Normalize column names
-                df.columns = [str(col).strip().lower() for col in df.columns]
-                
-                # Find columns
-                code_col = None
-                desc_col = None
-                price_col = None
-                category_col = None
-                lens_col = None
-                
-                for col in df.columns:
-                    col_lower = col.lower()
-                    # Product code
-                    if code_col is None and any(x in col_lower for x in ['sensor product code', 'product name', 'sap code', 'product code', 'model']):
-                        code_col = col
-                    # Description
-                    if desc_col is None and 'description' in col_lower:
-                        desc_col = col
-                    # Price - prefer sub-d for Sensor, unit price for Hikvision
-                    if any(x in col_lower for x in ['sub-d', 'unit price']):
-                        price_col = col
-                    elif price_col is None and any(x in col_lower for x in ['price', 'retail', 'cost']):
-                        price_col = col
-                    # Category
-                    if category_col is None and any(x in col_lower for x in ['series', 'category']):
-                        category_col = col
-                    # Lens
-                    if lens_col is None and 'lens' in col_lower:
-                        lens_col = col
-                
-                # If no price column found, try finding unnamed numeric columns
-                if price_col is None:
-                    for col in df.columns:
-                        if 'unnamed' in col.lower():
-                            try:
-                                numeric_vals = pd.to_numeric(df[col], errors='coerce')
-                                if numeric_vals.notna().sum() > 5 and numeric_vals.mean() > 10:
-                                    price_col = col
-                                    break
-                            except:
-                                continue
-                
-                if not code_col or not price_col:
-                    logging.info(f"Skipping sheet {sheet_name}: code_col={code_col}, price_col={price_col}")
-                    continue
-                
-                current_category = sheet_name  # Use sheet name as default category
-                
-                for idx, row in df.iterrows():
-                    try:
-                        product_code = str(row.get(code_col, '')).strip() if pd.notna(row.get(code_col)) else ''
-                        description = str(row.get(desc_col, '')).strip() if desc_col and pd.notna(row.get(desc_col)) else ''
-                        price_val = row.get(price_col)
-                        
-                        # Update category if found
-                        if category_col and pd.notna(row.get(category_col)):
-                            cat_val = str(row.get(category_col)).strip()
-                            if cat_val and len(cat_val) > 2 and cat_val.lower() not in ['nan', 'none']:
-                                current_category = cat_val
-                        
-                        # Skip if no valid product code
-                        if not product_code or product_code.lower() in ['nan', 'none', '', 'series', 'category', 'supplier code']:
-                            continue
-                        
-                        # Skip header-like rows
-                        skip_terms = ['product code', 'sap code', 'sensor product', 'product name', 'series', 'supplier code', 
-                                     'analogue', 'turbo camera', 'bullet camera', 'dome camera', 'nvr', 'dvr']
-                        if any(x in product_code.lower() for x in skip_terms):
-                            # But allow if it looks like a real product code (contains DS-, has numbers)
-                            if not (re.search(r'DS-|[0-9]{6,}', product_code)):
-                                continue
-                        
-                        # Parse price
-                        if pd.isna(price_val):
-                            continue
-                        
-                        try:
-                            price_str = str(price_val).replace(',', '').replace('R', '').replace(' ', '')
-                            price = float(price_str)
-                            if price <= 0 or price > 10000000:  # Skip invalid prices
-                                continue
-                        except:
-                            continue
-                        
-                        # Get lens info
-                        lens = str(row.get(lens_col, '')).strip() if lens_col and pd.notna(row.get(lens_col)) else None
-                        if lens and lens.lower() in ['nan', 'none']:
-                            lens = None
-                        
-                        # Use product code as description if no description
-                        if not description or description.lower() in ['nan', 'none']:
-                            description = product_code
-                        
-                        product = {
-                            'id': str(uuid.uuid4()),
-                            'product_code': product_code,
-                            'description': description,
-                            'price': round(price, 2),
-                            'vendor_id': vendor_id,
-                            'vendor_name': vendor_name,
-                            'price_list_id': price_list_id,
-                            'category': current_category,
-                            'lens': lens,
-                            'upload_date': datetime.now(timezone.utc).isoformat()
-                        }
-                        products.append(product)
-                        
-                    except Exception as e:
-                        logging.warning(f"Error parsing row {idx} in sheet {sheet_name}: {e}")
-                        continue
-                        
-            except Exception as e:
-                logging.warning(f"Error parsing sheet {sheet_name}: {e}")
-                continue
-                
-    except Exception as e:
-        logging.error(f"Error parsing Excel file: {e}")
-        raise HTTPException(status_code=400, detail=f"Failed to parse Excel file: {str(e)}")
-    
-    logging.info(f"Parsed {len(products)} products from {file_name}")
-    return products
+
+def normalize_product_code(code: str) -> str:
+    """Normalize product code for fuzzy matching"""
+    if not code:
+        return ""
+    # Remove common variations: spaces, parentheses, dashes variations, suffixes
+    normalized = code.upper()
+    normalized = re.sub(r'[\s\(\)\-\_]+', '', normalized)  # Remove spaces, parens, dashes
+    normalized = re.sub(r'OSTD|O\-STD|BLACK|WHITE', '', normalized)  # Remove common suffixes
+    normalized = re.sub(r'MM$', '', normalized)  # Remove trailing MM
+    return normalized
+
+
+def extract_base_code(code: str) -> str:
+    """Extract the base product code (e.g., DS-2CD2047G3 from DS-2CD2047G3-LIY(2.8mm))"""
+    if not code:
+        return ""
+    # Match the main product code pattern (e.g., DS-2CD2047G3)
+    match = re.match(r'(DS-?\d*[A-Z]*\d+[A-Z]*\d*)', code.upper().replace(' ', ''))
+    if match:
+        return match.group(1)
+    return code.upper()[:15]  # Return first 15 chars as fallback
 
 
 # Routes
@@ -285,13 +126,182 @@ async def delete_vendor(vendor_id: str):
     result = await db.vendors.delete_one({"id": vendor_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Vendor not found")
-    # Also delete associated price lists and products
     await db.price_lists.delete_many({"vendor_id": vendor_id})
     await db.products.delete_many({"vendor_id": vendor_id})
     return {"message": "Vendor deleted"}
 
 
-# Price List Upload Routes
+# Excel Preview for Column Mapping
+@api_router.post("/upload/preview")
+async def preview_excel(file: UploadFile = File(...)):
+    """Upload Excel and return column preview for mapping"""
+    if not file.filename.endswith(('.xlsx', '.xls')):
+        raise HTTPException(status_code=400, detail="Only Excel files (.xlsx, .xls) are supported")
+    
+    content = await file.read()
+    file_id = str(uuid.uuid4())
+    
+    # Store file temporarily
+    temp_files[file_id] = content
+    
+    try:
+        xl = pd.ExcelFile(io.BytesIO(content))
+        sheets_data = []
+        
+        for sheet_name in xl.sheet_names:
+            try:
+                # Read first 10 rows to preview
+                df = pd.read_excel(xl, sheet_name=sheet_name, nrows=10)
+                
+                # Get column info
+                columns = []
+                for col in df.columns:
+                    col_name = str(col).strip()
+                    # Get sample values (first 5 non-null)
+                    sample_values = df[col].dropna().head(5).tolist()
+                    sample_values = [str(v)[:50] for v in sample_values]  # Truncate long values
+                    
+                    columns.append({
+                        "name": col_name,
+                        "samples": sample_values
+                    })
+                
+                if columns:
+                    sheets_data.append({
+                        "sheet_name": sheet_name,
+                        "columns": columns,
+                        "row_count": len(df)
+                    })
+            except Exception as e:
+                logging.warning(f"Error reading sheet {sheet_name}: {e}")
+                continue
+        
+        return {
+            "file_id": file_id,
+            "file_name": file.filename,
+            "sheets": sheets_data
+        }
+        
+    except Exception as e:
+        logging.error(f"Error parsing Excel: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed to parse Excel file: {str(e)}")
+
+
+# Upload with manual column mapping
+@api_router.post("/upload/mapped")
+async def upload_with_mapping(data: UploadWithMapping):
+    """Process upload with user-specified column mapping"""
+    file_id = data.file_id
+    
+    if file_id not in temp_files:
+        raise HTTPException(status_code=400, detail="File not found. Please upload again.")
+    
+    content = temp_files[file_id]
+    price_list_id = str(uuid.uuid4())
+    
+    try:
+        xl = pd.ExcelFile(io.BytesIO(content))
+        df = pd.read_excel(xl, sheet_name=data.mapping.sheet_name)
+        
+        products = []
+        
+        for idx, row in df.iterrows():
+            try:
+                # Get values using mapped columns
+                product_code = str(row.get(data.mapping.product_code_col, '')).strip()
+                
+                if data.mapping.description_col:
+                    description = str(row.get(data.mapping.description_col, '')).strip()
+                else:
+                    description = product_code
+                
+                price_val = row.get(data.mapping.price_col)
+                
+                # Skip invalid rows
+                if not product_code or product_code.lower() in ['nan', 'none', '']:
+                    continue
+                
+                if pd.isna(price_val):
+                    continue
+                
+                try:
+                    price = float(str(price_val).replace(',', '').replace('R', '').replace(' ', ''))
+                    if price <= 0:
+                        continue
+                except:
+                    continue
+                
+                # Clean description
+                if not description or description.lower() in ['nan', 'none']:
+                    description = product_code
+                
+                product = {
+                    'id': str(uuid.uuid4()),
+                    'product_code': product_code,
+                    'product_code_normalized': normalize_product_code(product_code),
+                    'product_code_base': extract_base_code(product_code),
+                    'description': description,
+                    'price': round(price, 2),
+                    'vendor_id': data.vendor_id,
+                    'vendor_name': data.vendor_name,
+                    'price_list_id': price_list_id,
+                    'category': data.mapping.sheet_name,
+                    'upload_date': datetime.now(timezone.utc).isoformat()
+                }
+                products.append(product)
+                
+            except Exception as e:
+                logging.warning(f"Error parsing row {idx}: {e}")
+                continue
+        
+        if not products:
+            raise HTTPException(status_code=400, detail="No valid products found with the specified columns")
+        
+        # Create price list record
+        price_list = {
+            'id': price_list_id,
+            'vendor_id': data.vendor_id,
+            'vendor_name': data.vendor_name,
+            'file_name': f"mapped_upload_{price_list_id[:8]}.xlsx",
+            'upload_date': datetime.now(timezone.utc).isoformat(),
+            'product_count': len(products),
+            'status': 'active'
+        }
+        
+        await db.price_lists.insert_one(price_list)
+        await db.products.insert_many(products)
+        
+        # Record price history
+        history_records = []
+        for p in products:
+            history_records.append({
+                'id': str(uuid.uuid4()),
+                'product_code': p['product_code'],
+                'description': p['description'],
+                'price': p['price'],
+                'vendor_id': p['vendor_id'],
+                'vendor_name': p['vendor_name'],
+                'recorded_at': datetime.now(timezone.utc).isoformat()
+            })
+        await db.price_history.insert_many(history_records)
+        
+        # Clean up temp file
+        del temp_files[file_id]
+        
+        return {
+            "message": "Price list uploaded successfully",
+            "price_list_id": price_list_id,
+            "products_imported": len(products)
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error processing mapped upload: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed to process file: {str(e)}")
+
+
+# Legacy upload (auto-detect) - keep for backward compatibility
 @api_router.post("/upload")
 async def upload_price_list(
     file: UploadFile = File(...),
@@ -304,13 +314,12 @@ async def upload_price_list(
     content = await file.read()
     price_list_id = str(uuid.uuid4())
     
-    # Parse the Excel file
-    products = parse_excel_file(content, file.filename, vendor_id, vendor_name, price_list_id)
+    # Parse the Excel file (auto-detect)
+    products = parse_excel_file_auto(content, file.filename, vendor_id, vendor_name, price_list_id)
     
     if not products:
-        raise HTTPException(status_code=400, detail="No valid products found in the Excel file")
+        raise HTTPException(status_code=400, detail="No valid products found. Try using column mapping.")
     
-    # Create price list record
     price_list = {
         'id': price_list_id,
         'vendor_id': vendor_id,
@@ -323,11 +332,9 @@ async def upload_price_list(
     
     await db.price_lists.insert_one(price_list)
     
-    # Insert products
     if products:
         await db.products.insert_many(products)
         
-        # Record price history
         history_records = []
         for p in products:
             history_records.append({
@@ -348,6 +355,102 @@ async def upload_price_list(
     }
 
 
+def parse_excel_file_auto(file_content: bytes, file_name: str, vendor_id: str, vendor_name: str, price_list_id: str) -> List[dict]:
+    """Auto-detect columns and parse Excel file"""
+    products = []
+    
+    try:
+        xl = pd.ExcelFile(io.BytesIO(file_content))
+        
+        for sheet_name in xl.sheet_names:
+            try:
+                skip_sheets = ['home page', 'index', 'services', 'notes', 'co. details', 'co. details ', 'quote', 'in stock pricelist']
+                if sheet_name.lower().strip() in skip_sheets:
+                    continue
+                
+                df_raw = pd.read_excel(xl, sheet_name=sheet_name, header=None, nrows=15)
+                
+                header_row = None
+                for idx, row in df_raw.iterrows():
+                    row_str = ' '.join([str(v).lower() for v in row.values if pd.notna(v)])
+                    if any(term in row_str for term in ['product code', 'product name', 'sensor product', 'sap code', 'description']):
+                        header_row = idx
+                        break
+                
+                if header_row is None:
+                    header_row = 0
+                
+                df = pd.read_excel(xl, sheet_name=sheet_name, header=header_row)
+                df.columns = [str(col).strip().lower() for col in df.columns]
+                
+                code_col = None
+                desc_col = None
+                price_col = None
+                
+                for col in df.columns:
+                    col_lower = col.lower()
+                    if code_col is None and any(x in col_lower for x in ['sensor product code', 'product name', 'sap code', 'product code', 'model']):
+                        code_col = col
+                    if desc_col is None and 'description' in col_lower:
+                        desc_col = col
+                    if any(x in col_lower for x in ['sub-d', 'unit price']):
+                        price_col = col
+                    elif price_col is None and any(x in col_lower for x in ['price', 'retail', 'cost']):
+                        price_col = col
+                
+                if not code_col or not price_col:
+                    continue
+                
+                for idx, row in df.iterrows():
+                    try:
+                        product_code = str(row.get(code_col, '')).strip() if pd.notna(row.get(code_col)) else ''
+                        description = str(row.get(desc_col, '')).strip() if desc_col and pd.notna(row.get(desc_col)) else ''
+                        price_val = row.get(price_col)
+                        
+                        if not product_code or product_code.lower() in ['nan', 'none', '']:
+                            continue
+                        
+                        if pd.isna(price_val):
+                            continue
+                        
+                        try:
+                            price = float(str(price_val).replace(',', '').replace('R', '').replace(' ', ''))
+                            if price <= 0 or price > 10000000:
+                                continue
+                        except:
+                            continue
+                        
+                        if not description or description.lower() in ['nan', 'none']:
+                            description = product_code
+                        
+                        product = {
+                            'id': str(uuid.uuid4()),
+                            'product_code': product_code,
+                            'product_code_normalized': normalize_product_code(product_code),
+                            'product_code_base': extract_base_code(product_code),
+                            'description': description,
+                            'price': round(price, 2),
+                            'vendor_id': vendor_id,
+                            'vendor_name': vendor_name,
+                            'price_list_id': price_list_id,
+                            'category': sheet_name,
+                            'upload_date': datetime.now(timezone.utc).isoformat()
+                        }
+                        products.append(product)
+                        
+                    except Exception as e:
+                        continue
+                        
+            except Exception as e:
+                continue
+                
+    except Exception as e:
+        logging.error(f"Error parsing Excel file: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed to parse Excel file: {str(e)}")
+    
+    return products
+
+
 @api_router.get("/price-lists", response_model=List[PriceList])
 async def get_price_lists():
     price_lists = await db.price_lists.find({}, {"_id": 0}).to_list(1000)
@@ -363,33 +466,86 @@ async def delete_price_list(price_list_id: str):
     return {"message": "Price list deleted"}
 
 
-# Search Routes
+# Advanced Search with Fuzzy Matching
 @api_router.get("/search")
 async def search_products(
     q: str = Query(..., min_length=1, description="Search query"),
-    search_type: str = Query("both", description="Search type: code, description, or both")
+    fuzzy: bool = Query(False, description="Enable fuzzy matching for product codes")
 ):
-    query_regex = {"$regex": q, "$options": "i"}
+    """Search products with optional fuzzy matching"""
     
-    if search_type == "code":
-        filter_query = {"product_code": query_regex}
-    elif search_type == "description":
-        filter_query = {"description": query_regex}
+    if fuzzy:
+        # Fuzzy search - find similar product codes
+        return await fuzzy_search(q)
     else:
+        # Regular regex search
+        query_regex = {"$regex": q, "$options": "i"}
         filter_query = {"$or": [{"product_code": query_regex}, {"description": query_regex}]}
+        
+        products = await db.products.find(filter_query, {"_id": 0}).to_list(500)
+        
+        products.sort(key=lambda x: x.get('price', float('inf')))
+        
+        if products:
+            min_price = products[0]['price']
+            for p in products:
+                p['is_cheapest'] = p['price'] == min_price
+        
+        return {"results": products, "count": len(products)}
+
+
+async def fuzzy_search(query: str):
+    """Perform fuzzy search on product codes"""
     
-    products = await db.products.find(filter_query, {"_id": 0}).to_list(500)
+    # Normalize the search query
+    query_normalized = normalize_product_code(query)
+    query_base = extract_base_code(query)
     
-    # Sort by price (lowest to highest)
-    products.sort(key=lambda x: x.get('price', float('inf')))
+    # Get all products
+    all_products = await db.products.find({}, {"_id": 0}).to_list(10000)
     
-    # Mark cheapest product
-    if products:
-        min_price = products[0]['price']
-        for p in products:
+    if not all_products:
+        return {"results": [], "count": 0}
+    
+    # Score each product
+    scored_products = []
+    for product in all_products:
+        # Calculate similarity scores
+        code = product.get('product_code', '')
+        code_normalized = product.get('product_code_normalized', normalize_product_code(code))
+        code_base = product.get('product_code_base', extract_base_code(code))
+        
+        # Multiple matching strategies
+        score1 = fuzz.ratio(query_normalized, code_normalized)  # Full normalized match
+        score2 = fuzz.ratio(query_base, code_base)  # Base code match
+        score3 = fuzz.partial_ratio(query.upper(), code.upper())  # Partial match
+        score4 = fuzz.token_sort_ratio(query.upper(), code.upper())  # Token match
+        
+        # Weighted score
+        final_score = max(score1, score2) * 0.5 + score3 * 0.3 + score4 * 0.2
+        
+        # Also check description
+        desc_score = fuzz.partial_ratio(query.upper(), product.get('description', '').upper())
+        if desc_score > final_score:
+            final_score = desc_score * 0.8  # Slightly lower weight for description matches
+        
+        if final_score >= 50:  # Threshold
+            product['match_score'] = round(final_score, 1)
+            scored_products.append(product)
+    
+    # Sort by match score (highest first), then by price (lowest first)
+    scored_products.sort(key=lambda x: (-x.get('match_score', 0), x.get('price', float('inf'))))
+    
+    # Take top 100 results
+    results = scored_products[:100]
+    
+    # Mark cheapest among top matches
+    if results:
+        min_price = min(p.get('price', float('inf')) for p in results)
+        for p in results:
             p['is_cheapest'] = p['price'] == min_price
     
-    return {"results": products, "count": len(products)}
+    return {"results": results, "count": len(results), "fuzzy": True}
 
 
 # Price History Routes

@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import axios from "axios";
-import { Trophy, CaretDown, CaretUp } from "@phosphor-icons/react";
+import { Trophy, CaretDown, CaretUp, MagnifyingGlass } from "@phosphor-icons/react";
 import { toast } from "sonner";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -12,6 +12,8 @@ const Search = () => {
   const [searched, setSearched] = useState(false);
   const [sortField, setSortField] = useState("price");
   const [sortDirection, setSortDirection] = useState("asc");
+  const [fuzzyEnabled, setFuzzyEnabled] = useState(false);
+  const [isFuzzyResult, setIsFuzzyResult] = useState(false);
 
   const handleSearch = useCallback(async () => {
     if (!query.trim()) {
@@ -24,12 +26,13 @@ const Search = () => {
 
     try {
       const response = await axios.get(`${API}/search`, {
-        params: { q: query, search_type: "both" }
+        params: { q: query, fuzzy: fuzzyEnabled }
       });
       setResults(response.data.results);
+      setIsFuzzyResult(response.data.fuzzy || false);
       
       if (response.data.count === 0) {
-        toast.info("No products found matching your search");
+        toast.info("No products found. Try enabling Smart Match!");
       } else {
         toast.success(`Found ${response.data.count} products`);
       }
@@ -39,7 +42,7 @@ const Search = () => {
     } finally {
       setLoading(false);
     }
-  }, [query]);
+  }, [query, fuzzyEnabled]);
 
   const handleKeyPress = (e) => {
     if (e.key === "Enter") {
@@ -51,6 +54,7 @@ const Search = () => {
     setQuery("");
     setResults([]);
     setSearched(false);
+    setIsFuzzyResult(false);
   };
 
   const handleSort = (field) => {
@@ -63,6 +67,11 @@ const Search = () => {
   };
 
   const sortedResults = [...results].sort((a, b) => {
+    // If fuzzy and sorting by default, keep match score order
+    if (isFuzzyResult && sortField === "price") {
+      return a.price - b.price;
+    }
+    
     let aVal = a[sortField];
     let bVal = b[sortField];
     
@@ -93,43 +102,61 @@ const Search = () => {
       </div>
 
       <div className="p-6">
-        {/* Simple Search Box */}
+        {/* Search Box */}
         <div className="card mb-6">
-          <div className="flex gap-4">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Enter product code or description..."
-              className="flex-1 border border-zinc-300 px-4 py-3 text-base focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
-              data-testid="search-input"
-              autoComplete="off"
-            />
-            
-            <button
-              onClick={handleSearch}
-              disabled={loading || !query.trim()}
-              className="btn-primary px-8"
-              data-testid="search-button"
-            >
-              {loading ? "..." : "Search"}
-            </button>
-            
-            {query && (
+          <div className="flex flex-col gap-4">
+            {/* Search Input Row */}
+            <div className="flex gap-4">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Enter product code or description..."
+                className="flex-1 border border-zinc-300 px-4 py-3 text-base focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+                data-testid="search-input"
+                autoComplete="off"
+              />
+              
               <button
-                onClick={clearSearch}
-                className="btn-secondary px-4"
-                data-testid="clear-search"
+                onClick={handleSearch}
+                disabled={loading || !query.trim()}
+                className="btn-primary px-8 flex items-center gap-2"
+                data-testid="search-button"
               >
-                Clear
+                <MagnifyingGlass size={20} weight="bold" />
+                {loading ? "..." : "Search"}
               </button>
-            )}
+              
+              {query && (
+                <button
+                  onClick={clearSearch}
+                  className="btn-secondary px-4"
+                  data-testid="clear-search"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            
+            {/* Smart Match Toggle */}
+            <div className="flex items-center gap-3 pt-2 border-t border-zinc-200">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={fuzzyEnabled}
+                  onChange={(e) => setFuzzyEnabled(e.target.checked)}
+                  className="w-5 h-5 accent-blue-600"
+                  data-testid="fuzzy-toggle"
+                />
+                <span className="font-medium">Smart Match</span>
+              </label>
+              <span className="text-xs text-zinc-500">
+                Find similar product codes even if vendors use different formats 
+                (e.g., "DS-2CD2047G3" matches "DS-2CD2047G3-LIY(2.8mm)(O-STD)")
+              </span>
+            </div>
           </div>
-          
-          <p className="text-xs text-zinc-500 mt-3">
-            Search for product codes like "DS-2CD" or descriptions like "bullet camera"
-          </p>
         </div>
 
         {/* Loading */}
@@ -144,7 +171,18 @@ const Search = () => {
           <div className="card">
             <div className="empty-state">
               <p className="empty-state-title">No products found</p>
-              <p className="text-sm">Try a different search term</p>
+              <p className="text-sm mb-4">Try a different search term or enable Smart Match</p>
+              {!fuzzyEnabled && (
+                <button 
+                  onClick={() => {
+                    setFuzzyEnabled(true);
+                    handleSearch();
+                  }}
+                  className="btn-primary"
+                >
+                  Try Smart Match
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -153,9 +191,16 @@ const Search = () => {
         {results.length > 0 && (
           <div className="card p-0 overflow-hidden">
             <div className="bg-zinc-50 px-4 py-3 border-b border-zinc-200 flex items-center justify-between">
-              <span className="text-sm font-semibold">
-                {results.length} result{results.length !== 1 ? "s" : ""} found
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-semibold">
+                  {results.length} result{results.length !== 1 ? "s" : ""} found
+                </span>
+                {isFuzzyResult && (
+                  <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 font-semibold">
+                    SMART MATCH
+                  </span>
+                )}
+              </div>
               <span className="text-xs text-zinc-500">
                 Sorted by price (lowest first)
               </span>
@@ -202,6 +247,9 @@ const Search = () => {
                         <SortIcon field="price" />
                       </div>
                     </th>
+                    {isFuzzyResult && (
+                      <th className="text-right w-20">Match</th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -242,6 +290,13 @@ const Search = () => {
                           })}
                         </span>
                       </td>
+                      {isFuzzyResult && (
+                        <td className="text-right">
+                          <span className={`text-xs font-mono ${product.match_score >= 80 ? 'text-green-600' : product.match_score >= 60 ? 'text-yellow-600' : 'text-zinc-500'}`}>
+                            {product.match_score}%
+                          </span>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
