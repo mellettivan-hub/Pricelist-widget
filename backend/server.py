@@ -56,7 +56,6 @@ class ColumnMapping(BaseModel):
     product_code_col: str
     description_col: Optional[str] = None
     price_col: str
-    sheet_name: str
 
 class UploadWithMapping(BaseModel):
     vendor_id: str
@@ -73,23 +72,65 @@ def normalize_product_code(code: str) -> str:
     """Normalize product code for fuzzy matching"""
     if not code:
         return ""
-    # Remove common variations: spaces, parentheses, dashes variations, suffixes
     normalized = code.upper()
-    normalized = re.sub(r'[\s\(\)\-\_]+', '', normalized)  # Remove spaces, parens, dashes
-    normalized = re.sub(r'OSTD|O\-STD|BLACK|WHITE', '', normalized)  # Remove common suffixes
-    normalized = re.sub(r'MM$', '', normalized)  # Remove trailing MM
+    normalized = re.sub(r'[\s\(\)\-\_]+', '', normalized)
+    normalized = re.sub(r'OSTD|O\-STD|BLACK|WHITE', '', normalized)
+    normalized = re.sub(r'MM$', '', normalized)
     return normalized
 
 
 def extract_base_code(code: str) -> str:
-    """Extract the base product code (e.g., DS-2CD2047G3 from DS-2CD2047G3-LIY(2.8mm))"""
+    """Extract the base product code"""
     if not code:
         return ""
-    # Match the main product code pattern (e.g., DS-2CD2047G3)
     match = re.match(r'(DS-?\d*[A-Z]*\d+[A-Z]*\d*)', code.upper().replace(' ', ''))
     if match:
         return match.group(1)
-    return code.upper()[:15]  # Return first 15 chars as fallback
+    return code.upper()[:15]
+
+
+def detect_columns(df):
+    """Auto-detect product code, description, and price columns"""
+    df.columns = [str(col).strip() for col in df.columns]
+    columns_lower = {col: col.lower() for col in df.columns}
+    
+    code_col = None
+    desc_col = None
+    price_col = None
+    
+    for col, col_lower in columns_lower.items():
+        # Product code detection
+        if code_col is None:
+            if any(x in col_lower for x in ['product code', 'product name', 'sap code', 'sensor product', 'model', 'sku', 'item code', 'part number', 'part no']):
+                code_col = col
+        
+        # Description detection
+        if desc_col is None:
+            if 'description' in col_lower or 'desc' in col_lower:
+                desc_col = col
+        
+        # Price detection - prefer specific price columns
+        if any(x in col_lower for x in ['sub-d', 'sub d', 'unit price', 'sell price', 'cost price', 'dealer']):
+            price_col = col
+        elif price_col is None and any(x in col_lower for x in ['price', 'amount', 'cost', 'retail']):
+            price_col = col
+    
+    # Fallback: try to find numeric column that looks like price
+    if price_col is None:
+        for col in df.columns:
+            if 'unnamed' in col.lower():
+                try:
+                    numeric_vals = pd.to_numeric(df[col], errors='coerce')
+                    valid_count = numeric_vals.notna().sum()
+                    if valid_count > 3:
+                        mean_val = numeric_vals.mean()
+                        if 10 < mean_val < 1000000:  # Reasonable price range
+                            price_col = col
+                            break
+                except:
+                    continue
+    
+    return code_col, desc_col, price_col
 
 
 # Routes
@@ -146,40 +187,52 @@ async def preview_excel(file: UploadFile = File(...)):
     
     try:
         xl = pd.ExcelFile(io.BytesIO(content))
-        sheets_data = []
+        sheets_info = []
+        all_columns = set()
+        
+        # Skip known non-product sheets
+        skip_sheets = ['home page', 'index', 'services', 'notes', 'co. details', 'quote', 'in stock pricelist', 'contents']
         
         for sheet_name in xl.sheet_names:
+            if sheet_name.lower().strip() in skip_sheets:
+                continue
             try:
-                # Read first 10 rows to preview
-                df = pd.read_excel(xl, sheet_name=sheet_name, nrows=10)
-                
-                # Get column info
-                columns = []
+                df = pd.read_excel(xl, sheet_name=sheet_name, nrows=100)
+                if len(df) > 0:
+                    sheets_info.append({
+                        "sheet_name": sheet_name,
+                        "row_count": len(df)
+                    })
+                    for col in df.columns:
+                        all_columns.add(str(col).strip())
+            except:
+                continue
+        
+        # Get sample from first valid sheet for column preview
+        sample_columns = []
+        for sheet_name in xl.sheet_names:
+            if sheet_name.lower().strip() in skip_sheets:
+                continue
+            try:
+                df = pd.read_excel(xl, sheet_name=sheet_name, nrows=5)
                 for col in df.columns:
                     col_name = str(col).strip()
-                    # Get sample values (first 5 non-null)
-                    sample_values = df[col].dropna().head(5).tolist()
-                    sample_values = [str(v)[:50] for v in sample_values]  # Truncate long values
-                    
-                    columns.append({
+                    sample_values = df[col].dropna().head(3).tolist()
+                    sample_values = [str(v)[:50] for v in sample_values]
+                    sample_columns.append({
                         "name": col_name,
                         "samples": sample_values
                     })
-                
-                if columns:
-                    sheets_data.append({
-                        "sheet_name": sheet_name,
-                        "columns": columns,
-                        "row_count": len(df)
-                    })
-            except Exception as e:
-                logging.warning(f"Error reading sheet {sheet_name}: {e}")
+                break
+            except:
                 continue
         
         return {
             "file_id": file_id,
             "file_name": file.filename,
-            "sheets": sheets_data
+            "sheets": sheets_info,
+            "total_sheets": len(sheets_info),
+            "columns": sample_columns
         }
         
     except Exception as e:
@@ -187,10 +240,10 @@ async def preview_excel(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail=f"Failed to parse Excel file: {str(e)}")
 
 
-# Upload with manual column mapping
+# Upload with manual column mapping - imports ALL sheets
 @api_router.post("/upload/mapped")
 async def upload_with_mapping(data: UploadWithMapping):
-    """Process upload with user-specified column mapping"""
+    """Process upload with user-specified column mapping - imports from ALL sheets"""
     file_id = data.file_id
     
     if file_id not in temp_files:
@@ -201,68 +254,121 @@ async def upload_with_mapping(data: UploadWithMapping):
     
     try:
         xl = pd.ExcelFile(io.BytesIO(content))
-        df = pd.read_excel(xl, sheet_name=data.mapping.sheet_name)
-        
         products = []
+        sheets_processed = []
         
-        for idx, row in df.iterrows():
+        # Skip known non-product sheets
+        skip_sheets = ['home page', 'index', 'services', 'notes', 'co. details', 'quote', 'in stock pricelist', 'contents']
+        
+        for sheet_name in xl.sheet_names:
+            if sheet_name.lower().strip() in skip_sheets:
+                continue
+                
             try:
-                # Get values using mapped columns
-                product_code = str(row.get(data.mapping.product_code_col, '')).strip()
+                df = pd.read_excel(xl, sheet_name=sheet_name)
+                df.columns = [str(col).strip() for col in df.columns]
                 
-                if data.mapping.description_col:
-                    description = str(row.get(data.mapping.description_col, '')).strip()
-                else:
-                    description = product_code
+                # Check if mapped columns exist in this sheet
+                code_col = None
+                desc_col = None
+                price_col = None
                 
-                price_val = row.get(data.mapping.price_col)
+                for col in df.columns:
+                    col_lower = col.lower()
+                    mapped_code_lower = data.mapping.product_code_col.lower()
+                    mapped_price_lower = data.mapping.price_col.lower()
+                    
+                    # Match columns (flexible matching)
+                    if mapped_code_lower in col_lower or col_lower in mapped_code_lower:
+                        code_col = col
+                    if data.mapping.description_col:
+                        mapped_desc_lower = data.mapping.description_col.lower()
+                        if mapped_desc_lower in col_lower or col_lower in mapped_desc_lower:
+                            desc_col = col
+                    if mapped_price_lower in col_lower or col_lower in mapped_price_lower:
+                        price_col = col
                 
-                # Skip invalid rows
-                if not product_code or product_code.lower() in ['nan', 'none', '']:
+                # If exact match not found, try auto-detect for this sheet
+                if not code_col or not price_col:
+                    auto_code, auto_desc, auto_price = detect_columns(df)
+                    if not code_col:
+                        code_col = auto_code
+                    if not desc_col:
+                        desc_col = auto_desc
+                    if not price_col:
+                        price_col = auto_price
+                
+                if not code_col or not price_col:
                     continue
                 
-                if pd.isna(price_val):
-                    continue
-                
-                try:
-                    price = float(str(price_val).replace(',', '').replace('R', '').replace(' ', ''))
-                    if price <= 0:
+                sheet_count = 0
+                for idx, row in df.iterrows():
+                    try:
+                        product_code = str(row.get(code_col, '')).strip() if pd.notna(row.get(code_col)) else ''
+                        
+                        if desc_col:
+                            description = str(row.get(desc_col, '')).strip() if pd.notna(row.get(desc_col)) else ''
+                        else:
+                            description = product_code
+                        
+                        price_val = row.get(price_col)
+                        
+                        # Skip invalid rows
+                        if not product_code or product_code.lower() in ['nan', 'none', '']:
+                            continue
+                        
+                        # Skip header-like rows
+                        if any(x in product_code.lower() for x in ['product', 'code', 'name', 'model', 'sku', 'description']):
+                            continue
+                        
+                        if pd.isna(price_val):
+                            continue
+                        
+                        try:
+                            price = float(str(price_val).replace(',', '').replace('R', '').replace(' ', ''))
+                            if price <= 0 or price > 10000000:
+                                continue
+                        except:
+                            continue
+                        
+                        if not description or description.lower() in ['nan', 'none']:
+                            description = product_code
+                        
+                        product = {
+                            'id': str(uuid.uuid4()),
+                            'product_code': product_code,
+                            'product_code_normalized': normalize_product_code(product_code),
+                            'product_code_base': extract_base_code(product_code),
+                            'description': description,
+                            'price': round(price, 2),
+                            'vendor_id': data.vendor_id,
+                            'vendor_name': data.vendor_name,
+                            'price_list_id': price_list_id,
+                            'category': sheet_name,
+                            'upload_date': datetime.now(timezone.utc).isoformat()
+                        }
+                        products.append(product)
+                        sheet_count += 1
+                        
+                    except Exception as e:
                         continue
-                except:
-                    continue
                 
-                # Clean description
-                if not description or description.lower() in ['nan', 'none']:
-                    description = product_code
-                
-                product = {
-                    'id': str(uuid.uuid4()),
-                    'product_code': product_code,
-                    'product_code_normalized': normalize_product_code(product_code),
-                    'product_code_base': extract_base_code(product_code),
-                    'description': description,
-                    'price': round(price, 2),
-                    'vendor_id': data.vendor_id,
-                    'vendor_name': data.vendor_name,
-                    'price_list_id': price_list_id,
-                    'category': data.mapping.sheet_name,
-                    'upload_date': datetime.now(timezone.utc).isoformat()
-                }
-                products.append(product)
-                
+                if sheet_count > 0:
+                    sheets_processed.append({"sheet": sheet_name, "products": sheet_count})
+                        
             except Exception as e:
-                logging.warning(f"Error parsing row {idx}: {e}")
+                logging.warning(f"Error processing sheet {sheet_name}: {e}")
                 continue
         
         if not products:
-            raise HTTPException(status_code=400, detail="No valid products found with the specified columns")
+            raise HTTPException(status_code=400, detail="No valid products found in any sheet")
         
         # Create price list record
         price_list = {
             'id': price_list_id,
             'vendor_id': data.vendor_id,
             'vendor_name': data.vendor_name,
-            'file_name': f"mapped_upload_{price_list_id[:8]}.xlsx",
+            'file_name': f"upload_{price_list_id[:8]}.xlsx",
             'upload_date': datetime.now(timezone.utc).isoformat(),
             'product_count': len(products),
             'status': 'active'
@@ -291,7 +397,8 @@ async def upload_with_mapping(data: UploadWithMapping):
         return {
             "message": "Price list uploaded successfully",
             "price_list_id": price_list_id,
-            "products_imported": len(products)
+            "products_imported": len(products),
+            "sheets_processed": sheets_processed
         }
         
     except HTTPException:
@@ -301,113 +408,56 @@ async def upload_with_mapping(data: UploadWithMapping):
         raise HTTPException(status_code=400, detail=f"Failed to process file: {str(e)}")
 
 
-# Legacy upload (auto-detect) - keep for backward compatibility
-@api_router.post("/upload")
-async def upload_price_list(
+# Auto upload - imports ALL sheets with auto column detection
+@api_router.post("/upload/auto")
+async def upload_auto(
     file: UploadFile = File(...),
     vendor_id: str = Query(...),
     vendor_name: str = Query(...)
 ):
+    """Automatically import from ALL sheets with smart column detection"""
     if not file.filename.endswith(('.xlsx', '.xls')):
         raise HTTPException(status_code=400, detail="Only Excel files (.xlsx, .xls) are supported")
     
     content = await file.read()
     price_list_id = str(uuid.uuid4())
     
-    # Parse the Excel file (auto-detect)
-    products = parse_excel_file_auto(content, file.filename, vendor_id, vendor_name, price_list_id)
-    
-    if not products:
-        raise HTTPException(status_code=400, detail="No valid products found. Try using column mapping.")
-    
-    price_list = {
-        'id': price_list_id,
-        'vendor_id': vendor_id,
-        'vendor_name': vendor_name,
-        'file_name': file.filename,
-        'upload_date': datetime.now(timezone.utc).isoformat(),
-        'product_count': len(products),
-        'status': 'active'
-    }
-    
-    await db.price_lists.insert_one(price_list)
-    
-    if products:
-        await db.products.insert_many(products)
-        
-        history_records = []
-        for p in products:
-            history_records.append({
-                'id': str(uuid.uuid4()),
-                'product_code': p['product_code'],
-                'description': p['description'],
-                'price': p['price'],
-                'vendor_id': p['vendor_id'],
-                'vendor_name': p['vendor_name'],
-                'recorded_at': datetime.now(timezone.utc).isoformat()
-            })
-        await db.price_history.insert_many(history_records)
-    
-    return {
-        "message": "Price list uploaded successfully",
-        "price_list_id": price_list_id,
-        "products_imported": len(products)
-    }
-
-
-def parse_excel_file_auto(file_content: bytes, file_name: str, vendor_id: str, vendor_name: str, price_list_id: str) -> List[dict]:
-    """Auto-detect columns and parse Excel file"""
-    products = []
-    
     try:
-        xl = pd.ExcelFile(io.BytesIO(file_content))
+        xl = pd.ExcelFile(io.BytesIO(content))
+        products = []
+        sheets_processed = []
+        
+        skip_sheets = ['home page', 'index', 'services', 'notes', 'co. details', 'quote', 'in stock pricelist', 'contents']
         
         for sheet_name in xl.sheet_names:
+            if sheet_name.lower().strip() in skip_sheets:
+                continue
+                
             try:
-                skip_sheets = ['home page', 'index', 'services', 'notes', 'co. details', 'co. details ', 'quote', 'in stock pricelist']
-                if sheet_name.lower().strip() in skip_sheets:
-                    continue
+                df = pd.read_excel(xl, sheet_name=sheet_name)
                 
-                df_raw = pd.read_excel(xl, sheet_name=sheet_name, header=None, nrows=15)
-                
-                header_row = None
-                for idx, row in df_raw.iterrows():
-                    row_str = ' '.join([str(v).lower() for v in row.values if pd.notna(v)])
-                    if any(term in row_str for term in ['product code', 'product name', 'sensor product', 'sap code', 'description']):
-                        header_row = idx
-                        break
-                
-                if header_row is None:
-                    header_row = 0
-                
-                df = pd.read_excel(xl, sheet_name=sheet_name, header=header_row)
-                df.columns = [str(col).strip().lower() for col in df.columns]
-                
-                code_col = None
-                desc_col = None
-                price_col = None
-                
-                for col in df.columns:
-                    col_lower = col.lower()
-                    if code_col is None and any(x in col_lower for x in ['sensor product code', 'product name', 'sap code', 'product code', 'model']):
-                        code_col = col
-                    if desc_col is None and 'description' in col_lower:
-                        desc_col = col
-                    if any(x in col_lower for x in ['sub-d', 'unit price']):
-                        price_col = col
-                    elif price_col is None and any(x in col_lower for x in ['price', 'retail', 'cost']):
-                        price_col = col
+                # Auto-detect columns
+                code_col, desc_col, price_col = detect_columns(df)
                 
                 if not code_col or not price_col:
                     continue
                 
+                sheet_count = 0
                 for idx, row in df.iterrows():
                     try:
                         product_code = str(row.get(code_col, '')).strip() if pd.notna(row.get(code_col)) else ''
-                        description = str(row.get(desc_col, '')).strip() if desc_col and pd.notna(row.get(desc_col)) else ''
+                        
+                        if desc_col:
+                            description = str(row.get(desc_col, '')).strip() if pd.notna(row.get(desc_col)) else ''
+                        else:
+                            description = product_code
+                        
                         price_val = row.get(price_col)
                         
                         if not product_code or product_code.lower() in ['nan', 'none', '']:
+                            continue
+                        
+                        if any(x in product_code.lower() for x in ['product', 'code', 'name', 'model', 'sku']):
                             continue
                         
                         if pd.isna(price_val):
@@ -437,18 +487,56 @@ def parse_excel_file_auto(file_content: bytes, file_name: str, vendor_id: str, v
                             'upload_date': datetime.now(timezone.utc).isoformat()
                         }
                         products.append(product)
+                        sheet_count += 1
                         
-                    except Exception as e:
+                    except:
                         continue
+                
+                if sheet_count > 0:
+                    sheets_processed.append({"sheet": sheet_name, "products": sheet_count})
                         
             except Exception as e:
                 continue
-                
+        
+        if not products:
+            raise HTTPException(status_code=400, detail="No valid products found. Try manual column mapping.")
+        
+        price_list = {
+            'id': price_list_id,
+            'vendor_id': vendor_id,
+            'vendor_name': vendor_name,
+            'file_name': file.filename,
+            'upload_date': datetime.now(timezone.utc).isoformat(),
+            'product_count': len(products),
+            'status': 'active'
+        }
+        
+        await db.price_lists.insert_one(price_list)
+        await db.products.insert_many(products)
+        
+        history_records = [{
+            'id': str(uuid.uuid4()),
+            'product_code': p['product_code'],
+            'description': p['description'],
+            'price': p['price'],
+            'vendor_id': p['vendor_id'],
+            'vendor_name': p['vendor_name'],
+            'recorded_at': datetime.now(timezone.utc).isoformat()
+        } for p in products]
+        await db.price_history.insert_many(history_records)
+        
+        return {
+            "message": "Price list uploaded successfully",
+            "price_list_id": price_list_id,
+            "products_imported": len(products),
+            "sheets_processed": sheets_processed
+        }
+        
+    except HTTPException:
+        raise
     except Exception as e:
-        logging.error(f"Error parsing Excel file: {e}")
-        raise HTTPException(status_code=400, detail=f"Failed to parse Excel file: {str(e)}")
-    
-    return products
+        logging.error(f"Error: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed: {str(e)}")
 
 
 @api_router.get("/price-lists", response_model=List[PriceList])
@@ -470,36 +558,13 @@ async def delete_price_list(price_list_id: str):
 @api_router.get("/search")
 async def search_products(
     q: str = Query(..., min_length=1, description="Search query"),
-    fuzzy: bool = Query(False, description="Enable fuzzy matching for product codes")
+    fuzzy: bool = Query(True, description="Enable fuzzy matching")
 ):
-    """Search products with optional fuzzy matching"""
-    
-    if fuzzy:
-        # Fuzzy search - find similar product codes
-        return await fuzzy_search(q)
-    else:
-        # Regular regex search
-        query_regex = {"$regex": q, "$options": "i"}
-        filter_query = {"$or": [{"product_code": query_regex}, {"description": query_regex}]}
-        
-        products = await db.products.find(filter_query, {"_id": 0}).to_list(500)
-        
-        products.sort(key=lambda x: x.get('price', float('inf')))
-        
-        if products:
-            min_price = products[0]['price']
-            for p in products:
-                p['is_cheapest'] = p['price'] == min_price
-        
-        return {"results": products, "count": len(products)}
-
-
-async def fuzzy_search(query: str):
-    """Perform fuzzy search on product codes"""
+    """Search products with fuzzy matching"""
     
     # Normalize the search query
-    query_normalized = normalize_product_code(query)
-    query_base = extract_base_code(query)
+    query_normalized = normalize_product_code(q)
+    query_base = extract_base_code(q)
     
     # Get all products
     all_products = await db.products.find({}, {"_id": 0}).to_list(10000)
@@ -510,36 +575,32 @@ async def fuzzy_search(query: str):
     # Score each product
     scored_products = []
     for product in all_products:
-        # Calculate similarity scores
         code = product.get('product_code', '')
         code_normalized = product.get('product_code_normalized', normalize_product_code(code))
         code_base = product.get('product_code_base', extract_base_code(code))
         
         # Multiple matching strategies
-        score1 = fuzz.ratio(query_normalized, code_normalized)  # Full normalized match
-        score2 = fuzz.ratio(query_base, code_base)  # Base code match
-        score3 = fuzz.partial_ratio(query.upper(), code.upper())  # Partial match
-        score4 = fuzz.token_sort_ratio(query.upper(), code.upper())  # Token match
+        score1 = fuzz.ratio(query_normalized, code_normalized)
+        score2 = fuzz.ratio(query_base, code_base)
+        score3 = fuzz.partial_ratio(q.upper(), code.upper())
+        score4 = fuzz.token_sort_ratio(q.upper(), code.upper())
         
-        # Weighted score
         final_score = max(score1, score2) * 0.5 + score3 * 0.3 + score4 * 0.2
         
         # Also check description
-        desc_score = fuzz.partial_ratio(query.upper(), product.get('description', '').upper())
+        desc_score = fuzz.partial_ratio(q.upper(), product.get('description', '').upper())
         if desc_score > final_score:
-            final_score = desc_score * 0.8  # Slightly lower weight for description matches
+            final_score = desc_score * 0.8
         
-        if final_score >= 50:  # Threshold
+        if final_score >= 50:
             product['match_score'] = round(final_score, 1)
             scored_products.append(product)
     
-    # Sort by match score (highest first), then by price (lowest first)
+    # Sort by match score, then by price
     scored_products.sort(key=lambda x: (-x.get('match_score', 0), x.get('price', float('inf'))))
     
-    # Take top 100 results
     results = scored_products[:100]
     
-    # Mark cheapest among top matches
     if results:
         min_price = min(p.get('price', float('inf')) for p in results)
         for p in results:
@@ -589,7 +650,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'

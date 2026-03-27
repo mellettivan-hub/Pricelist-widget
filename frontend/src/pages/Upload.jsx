@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import { UploadSimple, FileXls, Check, Warning, ArrowRight, Table } from "@phosphor-icons/react";
+import { UploadSimple, FileXls, Check, Warning, ArrowRight, Table, CheckCircle } from "@phosphor-icons/react";
 import { toast } from "sonner";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -15,13 +15,12 @@ const Upload = () => {
   
   // Column mapping state
   const [previewData, setPreviewData] = useState(null);
-  const [selectedSheet, setSelectedSheet] = useState("");
   const [columnMapping, setColumnMapping] = useState({
     product_code_col: "",
     description_col: "",
     price_col: ""
   });
-  const [step, setStep] = useState(1); // 1: Upload, 2: Map Columns, 3: Confirm
+  const [step, setStep] = useState(1); // 1: Upload, 2: Map Columns, 3: Done
 
   useEffect(() => {
     fetchVendors();
@@ -73,13 +72,8 @@ const Upload = () => {
       });
 
       setPreviewData(response.data);
-      
-      if (response.data.sheets.length > 0) {
-        setSelectedSheet(response.data.sheets[0].sheet_name);
-      }
-      
       setStep(2);
-      toast.success("File loaded! Now map your columns.");
+      toast.success(`Found ${response.data.total_sheets} sheets to import`);
       
     } catch (error) {
       console.error("Preview failed:", error);
@@ -111,24 +105,19 @@ const Upload = () => {
         mapping: {
           product_code_col: columnMapping.product_code_col,
           description_col: columnMapping.description_col || null,
-          price_col: columnMapping.price_col,
-          sheet_name: selectedSheet
+          price_col: columnMapping.price_col
         }
       });
 
       setUploadResult({
         success: true,
         message: response.data.message,
-        products: response.data.products_imported
+        products: response.data.products_imported,
+        sheets: response.data.sheets_processed
       });
       
-      toast.success(`Successfully imported ${response.data.products_imported} products`);
+      toast.success(`Successfully imported ${response.data.products_imported} products from ${response.data.sheets_processed.length} sheets`);
       setStep(3);
-      
-      // Reset form
-      setFile(null);
-      setPreviewData(null);
-      setColumnMapping({ product_code_col: "", description_col: "", price_col: "" });
       
     } catch (error) {
       console.error("Upload failed:", error);
@@ -149,18 +138,12 @@ const Upload = () => {
     }
   };
 
-  const getCurrentSheetColumns = () => {
-    if (!previewData || !selectedSheet) return [];
-    const sheet = previewData.sheets.find(s => s.sheet_name === selectedSheet);
-    return sheet?.columns || [];
-  };
-
   return (
     <div data-testid="upload-page">
       {/* Header */}
       <div className="page-header">
         <h1 className="page-title">Upload Price List</h1>
-        <p className="page-subtitle">Import vendor price lists with column mapping</p>
+        <p className="page-subtitle">Import ALL sheets from vendor price lists</p>
       </div>
 
       <div className="p-6">
@@ -266,29 +249,24 @@ const Upload = () => {
                   <h2 className="font-bold text-lg">Map Your Columns</h2>
                 </div>
                 
-                <p className="text-sm text-zinc-600 mb-4">
-                  Select which columns contain your product data. We'll use this to import all products correctly.
-                </p>
-
-                {/* Sheet Selection */}
-                {previewData.sheets.length > 1 && (
-                  <div className="mb-4">
-                    <label className="text-xs uppercase tracking-widest font-semibold text-zinc-500 mb-2 block">
-                      Select Sheet
-                    </label>
-                    <select
-                      value={selectedSheet}
-                      onChange={(e) => setSelectedSheet(e.target.value)}
-                      className="w-full border border-zinc-300 px-4 py-2"
-                    >
-                      {previewData.sheets.map((sheet) => (
-                        <option key={sheet.sheet_name} value={sheet.sheet_name}>
-                          {sheet.sheet_name} ({sheet.row_count} rows)
-                        </option>
-                      ))}
-                    </select>
+                <div className="bg-blue-50 border border-blue-200 p-4 mb-6">
+                  <p className="text-sm text-blue-800">
+                    <strong>Found {previewData.total_sheets} sheets</strong> in this file. 
+                    Select the column names once - we'll apply this mapping to ALL sheets automatically.
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {previewData.sheets.slice(0, 10).map((sheet, idx) => (
+                      <span key={idx} className="text-xs bg-blue-100 text-blue-700 px-2 py-1">
+                        {sheet.sheet_name}
+                      </span>
+                    ))}
+                    {previewData.sheets.length > 10 && (
+                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1">
+                        +{previewData.sheets.length - 10} more
+                      </span>
+                    )}
                   </div>
-                )}
+                </div>
 
                 {/* Column Mapping */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -303,7 +281,7 @@ const Upload = () => {
                       data-testid="product-code-col"
                     >
                       <option value="">-- Select --</option>
-                      {getCurrentSheetColumns().map((col) => (
+                      {previewData.columns?.map((col) => (
                         <option key={col.name} value={col.name}>
                           {col.name}
                         </option>
@@ -322,7 +300,7 @@ const Upload = () => {
                       data-testid="description-col"
                     >
                       <option value="">-- Optional --</option>
-                      {getCurrentSheetColumns().map((col) => (
+                      {previewData.columns?.map((col) => (
                         <option key={col.name} value={col.name}>
                           {col.name}
                         </option>
@@ -341,7 +319,7 @@ const Upload = () => {
                       data-testid="price-col"
                     >
                       <option value="">-- Select --</option>
-                      {getCurrentSheetColumns().map((col) => (
+                      {previewData.columns?.map((col) => (
                         <option key={col.name} value={col.name}>
                           {col.name}
                         </option>
@@ -351,33 +329,35 @@ const Upload = () => {
                 </div>
 
                 {/* Column Preview */}
-                <div className="bg-zinc-50 border border-zinc-200 p-4 overflow-x-auto">
-                  <p className="text-xs uppercase tracking-widest font-semibold text-zinc-500 mb-3">
-                    Column Preview (Sample Data)
-                  </p>
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-zinc-300">
-                        {getCurrentSheetColumns().map((col) => (
-                          <th key={col.name} className="text-left py-2 px-2 font-semibold text-zinc-700">
-                            {col.name}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[0, 1, 2].map((rowIdx) => (
-                        <tr key={rowIdx} className="border-b border-zinc-200">
-                          {getCurrentSheetColumns().map((col) => (
-                            <td key={col.name} className="py-2 px-2 text-zinc-600 font-mono text-xs">
-                              {col.samples[rowIdx] || '-'}
-                            </td>
+                {previewData.columns && previewData.columns.length > 0 && (
+                  <div className="bg-zinc-50 border border-zinc-200 p-4 overflow-x-auto">
+                    <p className="text-xs uppercase tracking-widest font-semibold text-zinc-500 mb-3">
+                      Sample Data Preview
+                    </p>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-zinc-300">
+                          {previewData.columns.map((col) => (
+                            <th key={col.name} className="text-left py-2 px-2 font-semibold text-zinc-700">
+                              {col.name}
+                            </th>
                           ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {[0, 1, 2].map((rowIdx) => (
+                          <tr key={rowIdx} className="border-b border-zinc-200">
+                            {previewData.columns.map((col) => (
+                              <td key={col.name} className="py-2 px-2 text-zinc-600 font-mono text-xs">
+                                {col.samples[rowIdx] || '-'}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-4">
@@ -393,7 +373,7 @@ const Upload = () => {
                   className="btn-primary flex-1 flex items-center justify-center gap-2"
                   data-testid="upload-button"
                 >
-                  {uploading ? "Importing..." : "Import Products"}
+                  {uploading ? "Importing from all sheets..." : "Import All Products"}
                   <Check size={20} />
                 </button>
               </div>
@@ -402,17 +382,47 @@ const Upload = () => {
 
           {/* Step 3: Success */}
           {step === 3 && uploadResult && (
-            <div className="card text-center py-12">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Check size={32} weight="bold" className="text-green-600" />
+            <div className="card">
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle size={40} weight="fill" className="text-green-600" />
+                </div>
+                <h2 className="font-bold text-xl mb-2">Upload Successful!</h2>
+                <p className="text-zinc-600 mb-6">
+                  Imported <strong>{uploadResult.products}</strong> products from <strong>{uploadResult.sheets?.length || 0}</strong> sheets
+                </p>
               </div>
-              <h2 className="font-bold text-xl mb-2">Upload Successful!</h2>
-              <p className="text-zinc-600 mb-6">
-                Imported <strong>{uploadResult.products}</strong> products
-              </p>
+              
+              {/* Sheets breakdown */}
+              {uploadResult.sheets && uploadResult.sheets.length > 0 && (
+                <div className="border-t border-zinc-200 pt-4 mb-6">
+                  <p className="text-xs uppercase tracking-widest font-semibold text-zinc-500 mb-3">
+                    Import Summary
+                  </p>
+                  <div className="max-h-48 overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-zinc-200">
+                          <th className="text-left py-2">Sheet</th>
+                          <th className="text-right py-2">Products</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {uploadResult.sheets.map((sheet, idx) => (
+                          <tr key={idx} className="border-b border-zinc-100">
+                            <td className="py-2">{sheet.sheet}</td>
+                            <td className="text-right font-mono">{sheet.products}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+              
               <button
                 onClick={resetUpload}
-                className="btn-primary"
+                className="btn-primary w-full"
               >
                 Upload Another File
               </button>
