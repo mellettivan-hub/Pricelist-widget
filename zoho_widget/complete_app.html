@@ -331,17 +331,16 @@
 <script>
 // CONFIG - Matching your Zoho Creator setup
 var CONFIG = {
-    appName: "forbtech-pricelist-manager",
+    appName: "fortech-pricelist-manager",
     forms: { vendors: "Vendors", products: "Products", priceLists: "Price_Lists" },
-    // Try multiple report name formats
     reports: {
-        vendors: ["Vendors_Report", "All_Vendors", "Vendors Report"],
-        products: ["Products_Report", "All_Products", "Products Report"],
-        priceLists: ["All_Price_Lists", "Price_Lists_Report", "All Price Lists"]
+        vendors: ["Vendors_Report"],
+        products: ["Products_Report"],
+        priceLists: ["Price_Lists_Report", "All_Price_Lists"]
     },
     fields: {
-        vendor: { name: "name", email: "contact_email", phone: "contact_phone" },
-        product: { code: "product_code", desc: "description", cost: "cost_price", selling: "selling_price", markup: "markup_percent", vendor: "vendor_name" },
+        vendor: { name: "Name", email: "Contact_Email", phone: "Contact_Phone" },
+        product: { code: "Product_Code", desc: "Description", cost: "Cost_Price", selling: "Selling_Price", markup: "Markup_Percent", vendor: "Vendor_Name" },
         priceList: { file: "File_Name", vendor: "Vendor_Name", date: "Upload_Date", count: "Product_Count" }
     }
 };
@@ -389,31 +388,47 @@ function showError(elementId, message) {
 
 // Try multiple report names
 async function getRecordsWithFallback(reportNames) {
-    if (!zohoReady) return [];
+    if (!zohoReady) {
+        console.log('Zoho not ready, returning empty');
+        return [];
+    }
     for (var i = 0; i < reportNames.length; i++) {
         try {
+            console.log('Trying report:', reportNames[i], 'in app:', CONFIG.appName);
             var result = await ZOHO.CREATOR.API.getAllRecords({
                 appName: CONFIG.appName,
                 reportName: reportNames[i],
                 page: 1,
                 pageSize: 200
             });
+            console.log('API Response for', reportNames[i], ':', JSON.stringify(result));
             if (result && result.data) {
-                console.log('Found records using report:', reportNames[i]);
+                console.log('SUCCESS - Found', result.data.length, 'records using report:', reportNames[i]);
                 return result.data;
             }
+            if (result && result.code === 3100) {
+                console.log('Report exists but empty:', reportNames[i]);
+                return [];
+            }
         } catch (e) {
-            console.log('Report not found:', reportNames[i]);
+            console.error('API Error for report', reportNames[i], ':', e.message || JSON.stringify(e));
         }
     }
+    console.log('All report names failed for:', reportNames);
     return [];
 }
 
 async function loadDashboard() {
+    document.getElementById('dashboard-error').classList.add('hidden');
+    document.getElementById('recent-products').innerHTML = '<div class="loading"><i class="fas fa-spinner"></i><p>Loading...</p></div>';
+    
     try {
+        console.log('Loading dashboard data...');
         cachedProducts = await getRecordsWithFallback(CONFIG.reports.products);
         cachedVendors = await getRecordsWithFallback(CONFIG.reports.vendors);
         cachedPriceLists = await getRecordsWithFallback(CONFIG.reports.priceLists);
+        
+        console.log('Dashboard loaded - Products:', cachedProducts.length, 'Vendors:', cachedVendors.length, 'PriceLists:', cachedPriceLists.length);
         
         document.getElementById('stat-products').textContent = cachedProducts.length;
         document.getElementById('stat-vendors').textContent = cachedVendors.length;
@@ -429,10 +444,13 @@ async function loadDashboard() {
             });
             html += '</tbody></table>';
             document.getElementById('recent-products').innerHTML = html;
+        } else {
+            document.getElementById('recent-products').innerHTML = '<div class="empty-state"><i class="fas fa-box-open"></i><h3>No products yet</h3><p>Upload a price list to get started</p></div>';
         }
     } catch (e) {
         console.error('Dashboard error:', e);
-        showError('dashboard-error', 'Error loading data: ' + e.message);
+        showError('dashboard-error', 'Error loading data: ' + (e.message || JSON.stringify(e)));
+        document.getElementById('recent-products').innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h3>Connection Error</h3><p>Check console for details</p></div>';
     }
 }
 
