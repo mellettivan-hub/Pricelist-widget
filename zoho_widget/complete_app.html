@@ -350,70 +350,73 @@ var workbook = null, allData = [], allColumns = [], fileName = '';
 var selectedCode = [], selectedDesc = [], selectedPrice = [];
 var cachedProducts = [], cachedVendors = [], cachedPriceLists = [];
 
-// Initialize Zoho SDK
+// Initialize Zoho SDK - Direct API approach
+var initAttempts = 0;
+
 function initZoho() {
-    console.log('Checking Zoho SDK...', typeof ZOHO);
+    initAttempts++;
+    console.log('Init attempt:', initAttempts);
     
     if (typeof ZOHO === 'undefined') {
-        console.log('ZOHO not defined, retrying...');
-        setTimeout(initZoho, 500);
+        if (initAttempts < 10) {
+            setTimeout(initZoho, 500);
+        } else {
+            console.log('ZOHO SDK not available');
+            showDemoMode();
+        }
         return;
     }
     
-    console.log('ZOHO object:', Object.keys(ZOHO));
+    console.log('ZOHO available, keys:', Object.keys(ZOHO));
     
-    // For Zoho Creator widgets, use ZOHO.CREATOR.init()
     if (ZOHO.CREATOR) {
-        console.log('ZOHO.CREATOR found:', Object.keys(ZOHO.CREATOR));
+        console.log('ZOHO.CREATOR keys:', Object.keys(ZOHO.CREATOR));
         
-        // Try the standard init
+        // Check if API is directly available
+        if (ZOHO.CREATOR.API) {
+            console.log('ZOHO.CREATOR.API available, keys:', Object.keys(ZOHO.CREATOR.API));
+            zohoReady = true;
+            loadDashboard();
+            return;
+        }
+        
+        // Try init if it exists
         if (typeof ZOHO.CREATOR.init === 'function') {
+            console.log('Calling ZOHO.CREATOR.init()');
             ZOHO.CREATOR.init()
                 .then(function() {
-                    console.log('Zoho SDK initialized successfully');
+                    console.log('Init successful');
                     zohoReady = true;
                     loadDashboard();
                 })
-                .catch(function(err) {
-                    console.error('Zoho init failed:', err);
-                    // Try anyway - sometimes API works without init
-                    zohoReady = true;
-                    loadDashboard();
+                .catch(function(e) {
+                    console.error('Init error:', e);
+                    showDemoMode();
                 });
-        } else if (ZOHO.CREATOR.API) {
-            // API available directly
-            console.log('Using ZOHO.CREATOR.API directly');
-            zohoReady = true;
-            loadDashboard();
-        } else {
-            console.log('No init or API found, showing demo');
-            showDemoMode();
+            return;
         }
-    } else if (ZOHO.embeddedApp) {
-        // Alternative SDK structure
-        console.log('Using ZOHO.embeddedApp');
-        ZOHO.embeddedApp.on("PageLoad", function(data) {
-            console.log('PageLoad event:', data);
-            zohoReady = true;
-            loadDashboard();
-        });
-        ZOHO.embeddedApp.init();
+    }
+    
+    // Fallback - try after more delay
+    if (initAttempts < 10) {
+        setTimeout(initZoho, 500);
     } else {
-        console.log('No compatible Zoho SDK found');
+        console.log('Could not initialize Zoho SDK');
         showDemoMode();
     }
 }
 
 function showDemoMode() {
+    console.log('Running in demo mode');
     document.getElementById('stat-products').textContent = '0';
     document.getElementById('stat-vendors').textContent = '0';
     document.getElementById('stat-pricelists').textContent = '0';
     document.getElementById('recent-products').innerHTML = '<div class="empty-state"><i class="fas fa-box-open"></i><h3>No products yet</h3><p>Upload a price list to get started</p></div>';
 }
 
-// Start initialization
-window.addEventListener('load', function() {
-    setTimeout(initZoho, 300);
+// Start init after DOM ready
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(initZoho, 500);
 });
 
 // Navigation
