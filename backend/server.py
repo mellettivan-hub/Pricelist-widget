@@ -57,11 +57,22 @@ class ColumnMapping(BaseModel):
     description_col: Optional[str] = None
     price_col: str
 
+class ColumnMappingMulti(BaseModel):
+    product_code_cols: List[str]
+    description_cols: List[str] = []
+    price_cols: List[str]
+
 class UploadWithMapping(BaseModel):
     vendor_id: str
     vendor_name: str
     file_id: str
     mapping: ColumnMapping
+
+class UploadWithMappingMulti(BaseModel):
+    vendor_id: str
+    vendor_name: str
+    file_id: str
+    mapping: ColumnMappingMulti
 
 
 # Temporary storage for uploaded files awaiting column mapping
@@ -448,6 +459,191 @@ async def upload_with_mapping(data: UploadWithMapping):
     except Exception as e:
         logging.error(f"Error processing mapped upload: {e}")
         raise HTTPException(status_code=400, detail=f"Failed to process file: {str(e)}")
+
+
+
+# Upload with MULTIPLE column selections - imports ALL sheets
+@api_router.post("/upload/mapped-multi")
+async def upload_with_mapping_multi(data: UploadWithMappingMulti):
+    """Process upload with multiple column selections - imports from ALL sheets"""
+    file_id = data.file_id
+    
+    if file_id not in temp_files:
+        raise HTTPException(status_code=400, detail="File not found. Please upload again.")
+    
+    content = temp_files[file_id]
+    price_list_id = str(uuid.uuid4())
+    
+    try:
+        xl = pd.ExcelFile(io.BytesIO(content))
+        products = []
+        sheets_processed = []
+        
+        skip_sheets = ['home page', 'index', 'services', 'notes', 'co. details', 'quote', 'in stock pricelist', 'contents']
+        
+        for sheet_name in xl.sheet_names:
+            if sheet_name.lower().strip() in skip_sheets:
+                continue
+                
+            try:
+                # Find actual header row
+                header_row = find_header_row(xl, sheet_name)
+                df = pd.read_excel(xl, sheet_name=sheet_name, header=header_row)
+                df.columns = [str(col).strip() for col in df.columns]
+                
+                # Find matching columns from user's selections
+                code_col = None
+                desc_col = None
+                price_col = None
+                
+                df_cols_lower = {col: col.lower() for col in df.columns}
+                
+                # Match product code column
+                for user_col in data.mapping.product_code_cols:
+                    user_col_lower = user_col.lower()
+                    for df_col, df_col_lower in df_cols_lower.items():
+                        if user_col_lower == df_col_lower or user_col_lower in df_col_lower or df_col_lower in user_col_lower:
+                            code_col = df_col
+                            break
+                    if code_col:
+                        break
+                
+                # Match description column
+                for user_col in data.mapping.description_cols:
+                    user_col_lower = user_col.lower()
+                    for df_col, df_col_lower in df_cols_lower.items():
+                        if user_col_lower == df_col_lower or user_col_lower in df_col_lower or df_col_lower in user_col_lower:
+                            desc_col = df_col
+                            break
+                    if desc_col:
+                        break
+                
+                # Match price column
+                for user_col in data.mapping.price_cols:
+                    user_col_lower = user_col.lower()
+                    for df_col, df_col_lower in df_cols_lower.items():
+                        if user_col_lower == df_col_lower or user_col_lower in df_col_lower or df_col_lower in user_col_lower:
+                            price_col = df_col
+                            break
+                    if price_col:
+                        break
+                
+                # If not found, try auto-detect
+                if not code_col or not price_col:
+                    auto_code, auto_desc, auto_price = detect_columns(df)
+                    if not code_col:
+                        code_col = auto_code
+                    if not desc_col:
+                        desc_col = auto_desc
+                    if not price_col:
+                        price_col = auto_price
+                
+                if not code_col or not price_col:
+                    continue
+                
+                sheet_count = 0
+                for idx, row in df.iterrows():
+                    try:
+                        product_code = str(row.get(code_col, '')).strip() if pd.notna(row.get(code_col)) else ''
+                        
+                        if desc_col:
+                            description = str(row.get(desc_col, '')).strip() if pd.notna(row.get(desc_col)) else ''
+                        else:
+                            description = product_code
+                        
+                        price_val = row.get(price_col)
+                        
+                        if not product_code or product_code.lower() in ['nan', 'none', '']:
+                            continue
+                        
+                        # Skip header-like rows
+                        if any(x in product_code.lower() for x in ['product', 'code', 'name', 'model', 'sku', 'description', 'price']):
+                            continue
+                        
+                        if pd.isna(price_val):
+                            continue
+                        
+                        try:
+                            price_str = str(price_val).replace(',', '').replace('R', '').replace(' ', '')
+                            price = float(price_str)
+                            if price <= 0 or price > 10000000:
+                                continue
+                        except:
+                            continue
+                        
+                        if not description or description.lower() in ['nan', 'none']:
+                            description = product_code
+                        
+                        product = {
+                            'id': str(uuid.uuid4()),
+                            'product_code': product_code,
+                            'product_code_normalized': normalize_product_code(product_code),
+                            'product_code_base': extract_base_code(product_code),
+                            'description': description,
+                            'price': round(price, 2),
+                            'vendor_id': data.vendor_id,
+                            'vendor_name': data.vendor_name,
+                            'price_list_id': price_list_id,
+                            'category': sheet_name,
+                            'upload_date': datetime.now(timezone.utc).isoformat()
+                        }
+                        products.append(product)
+                        sheet_count += 1
+                        
+                    except Exception as e:
+                        continue
+                
+                if sheet_count > 0:
+                    sheets_processed.append({"sheet": sheet_name, "products": sheet_count})
+                        
+            except Exception as e:
+                logging.warning(f"Error processing sheet {sheet_name}: {e}")
+                continue
+        
+        if not products:
+            raise HTTPException(status_code=400, detail="No valid products found in any sheet")
+        
+        price_list = {
+            'id': price_list_id,
+            'vendor_id': data.vendor_id,
+            'vendor_name': data.vendor_name,
+            'file_name': f"upload_{price_list_id[:8]}.xlsx",
+            'upload_date': datetime.now(timezone.utc).isoformat(),
+            'product_count': len(products),
+            'status': 'active'
+        }
+        
+        await db.price_lists.insert_one(price_list)
+        await db.products.insert_many(products)
+        
+        # Record price history
+        history_records = [{
+            'id': str(uuid.uuid4()),
+            'product_code': p['product_code'],
+            'description': p['description'],
+            'price': p['price'],
+            'vendor_id': p['vendor_id'],
+            'vendor_name': p['vendor_name'],
+            'recorded_at': datetime.now(timezone.utc).isoformat()
+        } for p in products]
+        await db.price_history.insert_many(history_records)
+        
+        # Clean up temp file
+        del temp_files[file_id]
+        
+        return {
+            "message": "Price list uploaded successfully",
+            "price_list_id": price_list_id,
+            "products_imported": len(products),
+            "sheets_processed": sheets_processed
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Error processing multi-mapped upload: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed to process file: {str(e)}")
+
 
 
 # Auto upload - imports ALL sheets with auto column detection

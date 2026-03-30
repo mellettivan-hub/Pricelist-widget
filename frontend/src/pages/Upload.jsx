@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import { UploadSimple, FileXls, Check, Warning, ArrowRight, Table, CheckCircle } from "@phosphor-icons/react";
+import { UploadSimple, FileXls, Check, ArrowRight, Table, CheckCircle, CaretDown } from "@phosphor-icons/react";
 import { toast } from "sonner";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -13,14 +13,17 @@ const Upload = () => {
   const [uploadResult, setUploadResult] = useState(null);
   const fileInputRef = useRef(null);
   
-  // Column mapping state
+  // Column mapping state - now arrays for multiple selection
   const [previewData, setPreviewData] = useState(null);
   const [columnMapping, setColumnMapping] = useState({
-    product_code_col: "",
-    description_col: "",
-    price_col: ""
+    product_code_cols: [],
+    description_cols: [],
+    price_cols: []
   });
-  const [step, setStep] = useState(1); // 1: Upload, 2: Map Columns, 3: Done
+  const [step, setStep] = useState(1);
+  
+  // Dropdown visibility
+  const [openDropdown, setOpenDropdown] = useState(null);
 
   useEffect(() => {
     fetchVendors();
@@ -84,8 +87,8 @@ const Upload = () => {
   };
 
   const handleUploadMapped = async () => {
-    if (!columnMapping.product_code_col || !columnMapping.price_col) {
-      toast.error("Please select Product Code and Price columns");
+    if (columnMapping.product_code_cols.length === 0 || columnMapping.price_cols.length === 0) {
+      toast.error("Please select at least one Product Code and Price column");
       return;
     }
 
@@ -98,14 +101,14 @@ const Upload = () => {
     setUploading(true);
 
     try {
-      const response = await axios.post(`${API}/upload/mapped`, {
+      const response = await axios.post(`${API}/upload/mapped-multi`, {
         vendor_id: selectedVendor,
         vendor_name: vendor.name,
         file_id: previewData.file_id,
         mapping: {
-          product_code_col: columnMapping.product_code_col,
-          description_col: columnMapping.description_col || null,
-          price_col: columnMapping.price_col
+          product_code_cols: columnMapping.product_code_cols,
+          description_cols: columnMapping.description_cols,
+          price_cols: columnMapping.price_cols
         }
       });
 
@@ -132,11 +135,95 @@ const Upload = () => {
     setPreviewData(null);
     setUploadResult(null);
     setStep(1);
-    setColumnMapping({ product_code_col: "", description_col: "", price_col: "" });
+    setColumnMapping({ product_code_cols: [], description_cols: [], price_cols: [] });
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
+
+  const toggleColumn = (field, colName) => {
+    setColumnMapping(prev => {
+      const current = prev[field];
+      if (current.includes(colName)) {
+        return { ...prev, [field]: current.filter(c => c !== colName) };
+      } else {
+        return { ...prev, [field]: [...current, colName] };
+      }
+    });
+  };
+
+  const MultiSelectDropdown = ({ field, label, required, columns }) => {
+    const isOpen = openDropdown === field;
+    const selected = columnMapping[field];
+    
+    return (
+      <div className="relative">
+        <label className="text-xs uppercase tracking-widest font-semibold text-zinc-500 mb-2 block">
+          {label} {required && "*"}
+        </label>
+        <button
+          type="button"
+          onClick={() => setOpenDropdown(isOpen ? null : field)}
+          className="w-full border border-zinc-300 px-3 py-2 text-sm text-left flex items-center justify-between bg-white"
+        >
+          <span className={selected.length > 0 ? "text-zinc-900" : "text-zinc-400"}>
+            {selected.length > 0 ? `${selected.length} selected` : "-- Select columns --"}
+          </span>
+          <CaretDown size={16} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
+        
+        {isOpen && (
+          <div className="absolute z-50 mt-1 w-full bg-white border border-zinc-300 shadow-lg max-h-60 overflow-y-auto">
+            {columns?.map((col) => (
+              <label
+                key={col.name}
+                className="flex items-center gap-2 px-3 py-2 hover:bg-zinc-50 cursor-pointer border-b border-zinc-100"
+              >
+                <input
+                  type="checkbox"
+                  checked={selected.includes(col.name)}
+                  onChange={() => toggleColumn(field, col.name)}
+                  className="w-4 h-4 accent-blue-600"
+                />
+                <span className="text-sm flex-1">{col.name}</span>
+              </label>
+            ))}
+          </div>
+        )}
+        
+        {/* Show selected items as tags */}
+        {selected.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2">
+            {selected.map(col => (
+              <span 
+                key={col}
+                className="bg-blue-100 text-blue-700 text-xs px-2 py-1 flex items-center gap-1"
+              >
+                {col}
+                <button 
+                  onClick={(e) => { e.stopPropagation(); toggleColumn(field, col); }}
+                  className="hover:text-blue-900"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('.relative')) {
+        setOpenDropdown(null);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   return (
     <div data-testid="upload-page">
@@ -252,7 +339,7 @@ const Upload = () => {
                 <div className="bg-blue-50 border border-blue-200 p-4 mb-6">
                   <p className="text-sm text-blue-800">
                     <strong>Found {previewData.total_sheets} sheets</strong> in this file. 
-                    Select the column names once - we'll apply this mapping to ALL sheets automatically.
+                    Select ALL column names that contain product codes, descriptions, and prices - we'll match them across all sheets.
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {previewData.sheets.slice(0, 10).map((sheet, idx) => (
@@ -268,96 +355,34 @@ const Upload = () => {
                   </div>
                 </div>
 
-                {/* Column Mapping */}
+                {/* Column Mapping with Checkboxes */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  <div>
-                    <label className="text-xs uppercase tracking-widest font-semibold text-zinc-500 mb-2 block">
-                      Product Code Column *
-                    </label>
-                    <select
-                      value={columnMapping.product_code_col}
-                      onChange={(e) => setColumnMapping({...columnMapping, product_code_col: e.target.value})}
-                      className="w-full border border-zinc-300 px-3 py-2 text-sm"
-                      data-testid="product-code-col"
-                    >
-                      <option value="">-- Select --</option>
-                      {previewData.columns?.map((col) => (
-                        <option key={col.name} value={col.name}>
-                          {col.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs uppercase tracking-widest font-semibold text-zinc-500 mb-2 block">
-                      Description Column
-                    </label>
-                    <select
-                      value={columnMapping.description_col}
-                      onChange={(e) => setColumnMapping({...columnMapping, description_col: e.target.value})}
-                      className="w-full border border-zinc-300 px-3 py-2 text-sm"
-                      data-testid="description-col"
-                    >
-                      <option value="">-- Optional --</option>
-                      {previewData.columns?.map((col) => (
-                        <option key={col.name} value={col.name}>
-                          {col.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs uppercase tracking-widest font-semibold text-zinc-500 mb-2 block">
-                      Price Column *
-                    </label>
-                    <select
-                      value={columnMapping.price_col}
-                      onChange={(e) => setColumnMapping({...columnMapping, price_col: e.target.value})}
-                      className="w-full border border-zinc-300 px-3 py-2 text-sm"
-                      data-testid="price-col"
-                    >
-                      <option value="">-- Select --</option>
-                      {previewData.columns?.map((col) => (
-                        <option key={col.name} value={col.name}>
-                          {col.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <MultiSelectDropdown
+                    field="product_code_cols"
+                    label="Product Code Columns"
+                    required={true}
+                    columns={previewData.columns}
+                  />
+                  
+                  <MultiSelectDropdown
+                    field="description_cols"
+                    label="Description Columns"
+                    required={false}
+                    columns={previewData.columns}
+                  />
+                  
+                  <MultiSelectDropdown
+                    field="price_cols"
+                    label="Price Columns"
+                    required={true}
+                    columns={previewData.columns}
+                  />
                 </div>
 
-                {/* Column Preview */}
-                {previewData.columns && previewData.columns.length > 0 && (
-                  <div className="bg-zinc-50 border border-zinc-200 p-4 overflow-x-auto">
-                    <p className="text-xs uppercase tracking-widest font-semibold text-zinc-500 mb-3">
-                      Sample Data Preview
-                    </p>
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-zinc-300">
-                          {previewData.columns.map((col) => (
-                            <th key={col.name} className="text-left py-2 px-2 font-semibold text-zinc-700">
-                              {col.name}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {[0, 1, 2].map((rowIdx) => (
-                          <tr key={rowIdx} className="border-b border-zinc-200">
-                            {previewData.columns.map((col) => (
-                              <td key={col.name} className="py-2 px-2 text-zinc-600 font-mono text-xs">
-                                {col.samples[rowIdx] || '-'}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                <p className="text-xs text-zinc-500 bg-zinc-50 p-3 border border-zinc-200">
+                  <strong>Tip:</strong> Select all columns that might contain product codes (e.g., "EF Code", "Model", "Item Code") 
+                  and prices (e.g., "Suggested Selling Price", "Standard Price", "Price"). The system will try each one on every sheet.
+                </p>
               </div>
 
               <div className="flex gap-4">
@@ -369,7 +394,7 @@ const Upload = () => {
                 </button>
                 <button
                   onClick={handleUploadMapped}
-                  disabled={!columnMapping.product_code_col || !columnMapping.price_col || uploading}
+                  disabled={columnMapping.product_code_cols.length === 0 || columnMapping.price_cols.length === 0 || uploading}
                   className="btn-primary flex-1 flex items-center justify-center gap-2"
                   data-testid="upload-button"
                 >
