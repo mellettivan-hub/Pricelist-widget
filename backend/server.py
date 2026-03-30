@@ -991,6 +991,32 @@ async def download_zoho_inventory_guide():
     raise HTTPException(status_code=404, detail="Guide not found")
 
 
+@api_router.get("/download/zoho_widget")
+async def download_zoho_widget():
+    """Download Zoho Creator widget ZIP file"""
+    widget_path = Path("/app/exports/zoho_pricelist_widget.zip")
+    if widget_path.exists():
+        return FileResponse(
+            widget_path,
+            media_type="application/zip",
+            filename="zoho_pricelist_widget.zip"
+        )
+    raise HTTPException(status_code=404, detail="Widget not found")
+
+
+@api_router.get("/download/widget_guide")
+async def download_widget_guide():
+    """Download widget installation guide"""
+    guide_path = Path("/app/zoho_widget_installation_guide.md")
+    if guide_path.exists():
+        return FileResponse(
+            guide_path,
+            media_type="text/markdown",
+            filename="zoho_widget_installation_guide.md"
+        )
+    raise HTTPException(status_code=404, detail="Guide not found")
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
