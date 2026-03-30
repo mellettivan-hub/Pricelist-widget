@@ -56,14 +56,8 @@
             border-radius: 12px;
             padding: 40px;
             text-align: center;
-            cursor: pointer;
             transition: all 0.3s ease;
             background: #fafbfc;
-        }
-        
-        .upload-area:hover {
-            border-color: #3b82f6;
-            background: #f0f7ff;
         }
         
         .upload-area.dragover {
@@ -85,10 +79,40 @@
         .upload-hint {
             font-size: 13px;
             color: #888;
+            margin-bottom: 20px;
+        }
+        
+        /* Visible file input button */
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            margin-top: 10px;
+        }
+        
+        .file-input-btn {
+            display: inline-block;
+            padding: 14px 32px;
+            background: #3b82f6;
+            color: white;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        
+        .file-input-btn:hover {
+            background: #2563eb;
         }
         
         #fileInput {
-            display: none;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
         }
         
         /* Steps Indicator */
@@ -466,10 +490,16 @@
             
             <div class="upload-area" id="uploadArea">
                 <div class="upload-icon">📁</div>
-                <div class="upload-text">Drop your Excel file here or click to browse</div>
+                <div class="upload-text">Select your Excel file to upload</div>
                 <div class="upload-hint">Supports .xlsx, .xls files</div>
-                <input type="file" id="fileInput" accept=".xlsx,.xls">
+                
+                <div class="file-input-wrapper">
+                    <span class="file-input-btn">Choose Excel File</span>
+                    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+                </div>
             </div>
+            
+            <div id="selectedFile" class="message info hidden" style="margin-top: 16px;"></div>
         </div>
         
         <!-- Step 2: Map Columns -->
@@ -496,7 +526,7 @@
             
             <!-- Sheet Selection -->
             <div class="mapping-section">
-                <div class="mapping-title">Select Sheets to Import</div>
+                <div class="mapping-title">Select Sheet to Import</div>
                 <div class="sheet-tabs" id="sheetTabs"></div>
             </div>
             
@@ -620,39 +650,53 @@
         let allColumns = [];
         
         // Initialize Zoho SDK
-        ZOHO.CREATOR.init()
-            .then(function() {
-                console.log("Zoho Creator Widget SDK initialized");
-            })
-            .catch(function(error) {
-                console.error("SDK initialization failed:", error);
-            });
+        if (typeof ZOHO !== 'undefined' && ZOHO.CREATOR) {
+            ZOHO.CREATOR.init()
+                .then(function() {
+                    console.log("Zoho Creator Widget SDK initialized");
+                })
+                .catch(function(error) {
+                    console.error("SDK initialization failed:", error);
+                });
+        }
         
-        // Upload area handlers
-        const uploadArea = document.getElementById('uploadArea');
+        // File input handler - using direct event listener
         const fileInput = document.getElementById('fileInput');
         
-        uploadArea.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('selectedFile').textContent = 'Selected: ' + file.name;
+                document.getElementById('selectedFile').classList.remove('hidden');
+                processFile(file);
+            }
+        });
+        
+        // Drag and drop handlers for upload area
+        const uploadArea = document.getElementById('uploadArea');
         
         uploadArea.addEventListener('dragover', (e) => {
             e.preventDefault();
+            e.stopPropagation();
             uploadArea.classList.add('dragover');
         });
         
-        uploadArea.addEventListener('dragleave', () => {
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             uploadArea.classList.remove('dragover');
         });
         
         uploadArea.addEventListener('drop', (e) => {
             e.preventDefault();
+            e.stopPropagation();
             uploadArea.classList.remove('dragover');
             const file = e.dataTransfer.files[0];
-            if (file) processFile(file);
-        });
-        
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) processFile(file);
+            if (file) {
+                document.getElementById('selectedFile').textContent = 'Selected: ' + file.name;
+                document.getElementById('selectedFile').classList.remove('hidden');
+                processFile(file);
+            }
         });
         
         // Process uploaded file
@@ -671,7 +715,7 @@
                     
                     // Display file info
                     document.getElementById('fileInfo').textContent = 
-                        `File: ${fileName} | Sheets found: ${workbook.SheetNames.length}`;
+                        'File: ' + fileName + ' | Sheets found: ' + workbook.SheetNames.length;
                     
                     // Create sheet tabs
                     createSheetTabs();
@@ -701,8 +745,8 @@
                 
                 const tab = document.createElement('button');
                 tab.className = 'sheet-tab';
-                tab.innerHTML = `${name} <span class="row-count">(${rowCount} rows)</span>`;
-                tab.onclick = () => selectSheet(name);
+                tab.innerHTML = name + ' <span class="row-count">(' + rowCount + ' rows)</span>';
+                tab.onclick = function() { selectSheet(name); };
                 tab.dataset.sheet = name;
                 tabsContainer.appendChild(tab);
             });
@@ -711,14 +755,16 @@
         // Select sheet
         function selectSheet(sheetName) {
             // Update tab styles
-            document.querySelectorAll('.sheet-tab').forEach(tab => {
-                tab.classList.toggle('active', tab.dataset.sheet === sheetName);
+            document.querySelectorAll('.sheet-tab').forEach(function(tab) {
+                if (tab.dataset.sheet === sheetName) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
             });
             
             // Track selected sheet
-            if (!selectedSheets.includes(sheetName)) {
-                selectedSheets = [sheetName]; // For simplicity, one sheet at a time
-            }
+            selectedSheets = [sheetName];
             
             // Parse sheet data
             const sheet = workbook.Sheets[sheetName];
@@ -727,7 +773,7 @@
             // Find header row (first row with multiple non-empty cells)
             let headerRowIndex = 0;
             for (let i = 0; i < Math.min(10, jsonData.length); i++) {
-                const nonEmptyCells = jsonData[i].filter(cell => cell !== '').length;
+                const nonEmptyCells = jsonData[i].filter(function(cell) { return cell !== ''; }).length;
                 if (nonEmptyCells >= 3) {
                     headerRowIndex = i;
                     break;
@@ -736,9 +782,9 @@
             
             // Extract columns
             allColumns = jsonData[headerRowIndex] || [];
-            currentSheetData = jsonData.slice(headerRowIndex + 1).filter(row => 
-                row.some(cell => cell !== '')
-            );
+            currentSheetData = jsonData.slice(headerRowIndex + 1).filter(function(row) {
+                return row.some(function(cell) { return cell !== ''; });
+            });
             
             // Populate column dropdowns
             populateColumnDropdowns();
@@ -752,15 +798,15 @@
         
         // Populate dropdowns
         function populateColumnDropdowns() {
-            const dropdowns = ['productCodeCol', 'descriptionCol', 'priceCol', 'categoryCol'];
+            var dropdowns = ['productCodeCol', 'descriptionCol', 'priceCol', 'categoryCol'];
             
-            dropdowns.forEach(id => {
-                const select = document.getElementById(id);
+            dropdowns.forEach(function(id) {
+                var select = document.getElementById(id);
                 select.innerHTML = '<option value="">-- Select --</option>';
                 
-                allColumns.forEach((col, index) => {
+                allColumns.forEach(function(col, index) {
                     if (col) {
-                        const option = document.createElement('option');
+                        var option = document.createElement('option');
                         option.value = index;
                         option.textContent = col.toString().substring(0, 40);
                         select.appendChild(option);
@@ -771,25 +817,25 @@
         
         // Auto-detect columns based on common names
         function autoDetectColumns() {
-            const codePatterns = ['code', 'item', 'sku', 'part', 'model', 'product code', 'item code'];
-            const descPatterns = ['desc', 'name', 'product', 'title', 'specification'];
-            const pricePatterns = ['price', 'cost', 'amount', 'value', 'rate', 'standard'];
-            const categoryPatterns = ['category', 'type', 'group', 'class'];
+            var codePatterns = ['code', 'item', 'sku', 'part', 'model', 'product code', 'item code'];
+            var descPatterns = ['desc', 'name', 'product', 'title', 'specification'];
+            var pricePatterns = ['price', 'cost', 'amount', 'value', 'rate', 'standard'];
+            var categoryPatterns = ['category', 'type', 'group', 'class'];
             
-            allColumns.forEach((col, index) => {
+            allColumns.forEach(function(col, index) {
                 if (!col) return;
-                const colLower = col.toString().toLowerCase();
+                var colLower = col.toString().toLowerCase();
                 
-                if (codePatterns.some(p => colLower.includes(p)) && !document.getElementById('productCodeCol').value) {
+                if (codePatterns.some(function(p) { return colLower.includes(p); }) && !document.getElementById('productCodeCol').value) {
                     document.getElementById('productCodeCol').value = index;
                 }
-                if (descPatterns.some(p => colLower.includes(p)) && !document.getElementById('descriptionCol').value) {
+                if (descPatterns.some(function(p) { return colLower.includes(p); }) && !document.getElementById('descriptionCol').value) {
                     document.getElementById('descriptionCol').value = index;
                 }
-                if (pricePatterns.some(p => colLower.includes(p)) && !document.getElementById('priceCol').value) {
+                if (pricePatterns.some(function(p) { return colLower.includes(p); }) && !document.getElementById('priceCol').value) {
                     document.getElementById('priceCol').value = index;
                 }
-                if (categoryPatterns.some(p => colLower.includes(p)) && !document.getElementById('categoryCol').value) {
+                if (categoryPatterns.some(function(p) { return colLower.includes(p); }) && !document.getElementById('categoryCol').value) {
                     document.getElementById('categoryCol').value = index;
                 }
             });
@@ -797,20 +843,27 @@
         
         // Show preview
         function showPreview() {
-            const thead = document.getElementById('previewHead');
-            const tbody = document.getElementById('previewBody');
+            var thead = document.getElementById('previewHead');
+            var tbody = document.getElementById('previewBody');
             
             // Header
-            thead.innerHTML = '<tr>' + allColumns.map(col => 
-                `<th>${col || '(empty)'}</th>`
-            ).join('') + '</tr>';
+            var headerHtml = '<tr>';
+            allColumns.forEach(function(col) {
+                headerHtml += '<th>' + (col || '(empty)') + '</th>';
+            });
+            headerHtml += '</tr>';
+            thead.innerHTML = headerHtml;
             
             // Body (first 10 rows)
-            tbody.innerHTML = currentSheetData.slice(0, 10).map(row => 
-                '<tr>' + allColumns.map((_, i) => 
-                    `<td>${row[i] || ''}</td>`
-                ).join('') + '</tr>'
-            ).join('');
+            var bodyHtml = '';
+            currentSheetData.slice(0, 10).forEach(function(row) {
+                bodyHtml += '<tr>';
+                allColumns.forEach(function(_, i) {
+                    bodyHtml += '<td>' + (row[i] || '') + '</td>';
+                });
+                bodyHtml += '</tr>';
+            });
+            tbody.innerHTML = bodyHtml;
         }
         
         // Reset upload
@@ -819,7 +872,8 @@
             currentSheetData = [];
             selectedSheets = [];
             fileName = '';
-            fileInput.value = '';
+            document.getElementById('fileInput').value = '';
+            document.getElementById('selectedFile').classList.add('hidden');
             
             document.getElementById('step1').classList.remove('hidden');
             document.getElementById('step2').classList.add('hidden');
@@ -829,12 +883,12 @@
         
         // Start import
         async function startImport() {
-            const vendorName = document.getElementById('vendorName').value.trim();
-            const productCodeColIdx = document.getElementById('productCodeCol').value;
-            const priceColIdx = document.getElementById('priceCol').value;
-            const descColIdx = document.getElementById('descriptionCol').value;
-            const categoryColIdx = document.getElementById('categoryCol').value;
-            const markupPercent = parseFloat(document.getElementById('markupPercent').value) || 45;
+            var vendorName = document.getElementById('vendorName').value.trim();
+            var productCodeColIdx = document.getElementById('productCodeCol').value;
+            var priceColIdx = document.getElementById('priceCol').value;
+            var descColIdx = document.getElementById('descriptionCol').value;
+            var categoryColIdx = document.getElementById('categoryCol').value;
+            var markupPercent = parseFloat(document.getElementById('markupPercent').value) || 45;
             
             // Validation
             if (!vendorName) {
@@ -854,15 +908,15 @@
             document.getElementById('step2').classList.add('hidden');
             document.getElementById('step3').classList.remove('hidden');
             
-            const progressBar = document.getElementById('progressBar');
-            const progressText = document.getElementById('progressText');
+            var progressBar = document.getElementById('progressBar');
+            var progressText = document.getElementById('progressText');
             
             try {
                 // Create Price List record first
                 progressText.textContent = 'Creating price list record...';
                 progressBar.style.width = '10%';
                 
-                const priceListData = {
+                var priceListData = {
                     data: {
                         File_Name: fileName,
                         Vendor_Name: vendorName,
@@ -872,37 +926,40 @@
                 };
                 
                 // Add to Price_Lists form
-                await ZOHO.CREATOR.API.addRecord({
-                    appName: "forbtech-pricelist-manager",
-                    formName: "Price_Lists",
-                    data: priceListData
-                });
+                if (typeof ZOHO !== 'undefined' && ZOHO.CREATOR) {
+                    await ZOHO.CREATOR.API.addRecord({
+                        appName: "forbtech-pricelist-manager",
+                        formName: "Price_Lists",
+                        data: priceListData
+                    });
+                }
                 
                 // Process products
-                const totalProducts = currentSheetData.length;
-                let imported = 0;
-                let errors = 0;
+                var totalProducts = currentSheetData.length;
+                var imported = 0;
+                var errors = 0;
                 
-                progressText.textContent = `Importing products: 0/${totalProducts}`;
+                progressText.textContent = 'Importing products: 0/' + totalProducts;
                 progressBar.style.width = '20%';
                 
                 // Batch products for efficiency
-                const batchSize = 10;
-                for (let i = 0; i < currentSheetData.length; i += batchSize) {
-                    const batch = currentSheetData.slice(i, i + batchSize);
+                var batchSize = 10;
+                for (var i = 0; i < currentSheetData.length; i += batchSize) {
+                    var batch = currentSheetData.slice(i, i + batchSize);
                     
-                    for (const row of batch) {
-                        const productCode = row[productCodeColIdx];
-                        const costPrice = parseFloat(row[priceColIdx]) || 0;
+                    for (var j = 0; j < batch.length; j++) {
+                        var row = batch[j];
+                        var productCode = row[productCodeColIdx];
+                        var costPrice = parseFloat(row[priceColIdx]) || 0;
                         
                         if (!productCode || costPrice === 0) {
                             errors++;
                             continue;
                         }
                         
-                        const sellingPrice = costPrice * (1 + markupPercent / 100);
+                        var sellingPrice = costPrice * (1 + markupPercent / 100);
                         
-                        const productData = {
+                        var productData = {
                             data: {
                                 product_code: productCode.toString(),
                                 description: descColIdx ? (row[descColIdx] || '').toString() : '',
@@ -915,11 +972,13 @@
                         };
                         
                         try {
-                            await ZOHO.CREATOR.API.addRecord({
-                                appName: "forbtech-pricelist-manager",
-                                formName: "Products",
-                                data: productData
-                            });
+                            if (typeof ZOHO !== 'undefined' && ZOHO.CREATOR) {
+                                await ZOHO.CREATOR.API.addRecord({
+                                    appName: "forbtech-pricelist-manager",
+                                    formName: "Products",
+                                    data: productData
+                                });
+                            }
                             imported++;
                         } catch (err) {
                             console.error('Error adding product:', err);
@@ -928,15 +987,15 @@
                     }
                     
                     // Update progress
-                    const progress = 20 + ((i + batch.length) / totalProducts * 80);
-                    progressBar.style.width = `${progress}%`;
-                    progressText.textContent = `Importing products: ${imported}/${totalProducts}`;
+                    var progress = 20 + ((i + batch.length) / totalProducts * 80);
+                    progressBar.style.width = progress + '%';
+                    progressText.textContent = 'Importing products: ' + imported + '/' + totalProducts;
                 }
                 
                 // Show results
                 document.getElementById('importTitle').textContent = 'Import Complete!';
                 document.getElementById('importSubtitle').textContent = 
-                    errors > 0 ? `${imported} products imported, ${errors} skipped` : 'All products imported successfully';
+                    errors > 0 ? imported + ' products imported, ' + errors + ' skipped' : 'All products imported successfully';
                 
                 document.getElementById('totalProducts').textContent = imported;
                 document.getElementById('priceListName').textContent = fileName.substring(0, 20);
