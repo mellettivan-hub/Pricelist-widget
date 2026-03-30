@@ -11,16 +11,12 @@
         body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f8f9fa;padding:20px;color:#333}
         .container{max-width:850px;margin:0 auto}
         .card{background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.1);padding:24px;margin-bottom:20px}
-        
-        /* Steps */
         .steps{display:flex;justify-content:center;align-items:center;gap:8px;margin-bottom:30px;font-size:14px}
         .step-num{width:26px;height:26px;border-radius:50%;background:#3b82f6;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:600;font-size:12px}
         .step-num.gray{background:#9ca3af}
         .step-text{margin-left:6px;color:#3b82f6}
         .step-text.gray{color:#9ca3af}
         .step-arrow{color:#d1d5db;margin:0 8px}
-        
-        /* Upload */
         .upload-area{border:2px dashed #d1d5db;border-radius:8px;padding:50px;text-align:center;background:#fafafa;cursor:pointer}
         .upload-area:hover{border-color:#3b82f6;background:#f0f7ff}
         .upload-icon{font-size:40px;margin-bottom:12px}
@@ -29,30 +25,21 @@
         .file-label{display:inline-block;margin-top:16px;padding:12px 28px;background:#3b82f6;color:#fff;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer}
         .file-label:hover{background:#2563eb}
         .file-label input{display:none}
-        
         h2{font-size:16px;color:#111;margin-bottom:20px;display:flex;align-items:center;gap:8px}
-        
-        /* Sheets info box */
         .sheets-box{background:#eef2ff;border-radius:6px;padding:14px;margin-bottom:20px}
         .sheets-box p{font-size:13px;color:#374151;margin-bottom:10px}
         .sheets-box strong{color:#3b82f6}
         .sheet-tags{display:flex;flex-wrap:wrap;gap:6px}
         .sheet-tag{padding:4px 10px;background:#3b82f6;color:#fff;border-radius:4px;font-size:11px}
         .sheet-tag.more{background:#6b7280}
-        
-        /* Vendor input */
         .vendor-row{margin-bottom:20px}
         .vendor-row label{display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;text-transform:uppercase}
         .vendor-row input{width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:14px}
         .vendor-row input:focus{outline:none;border-color:#3b82f6}
-        
-        /* Column selects row */
         .selects-row{display:flex;gap:12px;margin-bottom:20px}
         .select-col{flex:1}
         .select-col label{display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:6px;text-transform:uppercase}
         .select-col label .req{color:#ef4444}
-        
-        /* Dropdown */
         .dropdown{position:relative}
         .dropdown-btn{width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;background:#fff;text-align:left;cursor:pointer;font-size:13px;color:#6b7280;display:flex;justify-content:space-between;align-items:center}
         .dropdown-btn:hover{border-color:#9ca3af}
@@ -64,8 +51,6 @@
         .dropdown-item:hover{background:#f9fafb}
         .dropdown-item input{width:14px;height:14px}
         .dropdown-item.checked{background:#eff6ff}
-        
-        /* Markup box */
         .markup-box{background:#dcfce7;border-radius:6px;padding:16px;margin-bottom:20px}
         .markup-example{background:#fff;border:1px dashed #86efac;border-radius:4px;padding:12px;text-align:center;margin-bottom:12px}
         .markup-example .label{font-size:11px;color:#6b7280;margin-bottom:4px}
@@ -74,39 +59,33 @@
         .markup-example .selling{color:#22c55e;font-weight:600}
         .markup-row{display:flex;align-items:center;gap:8px;font-size:13px;color:#166534}
         .markup-row input{width:60px;padding:6px 8px;border:1px solid #86efac;border-radius:4px;text-align:center;font-size:14px}
-        
         .info-text{font-size:12px;color:#6b7280;padding:10px;background:#f9fafb;border-radius:4px;margin-bottom:20px}
-        
-        /* Buttons */
         .btn-row{display:flex;gap:12px}
         .btn{flex:1;padding:12px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;border:none;text-align:center}
         .btn-back{background:#f3f4f6;color:#374151}
         .btn-back:hover{background:#e5e7eb}
-        .btn-import{background:#6b7280;color:#fff}
-        .btn-import:hover{background:#4b5563}
+        .btn-import{background:#3b82f6;color:#fff}
+        .btn-import:hover{background:#2563eb}
         .btn-success{background:#22c55e;color:#fff}
-        
-        /* Progress */
         .progress-box{margin:20px 0}
         .progress-bar-bg{height:6px;background:#e5e7eb;border-radius:3px}
         .progress-bar{height:100%;background:#3b82f6;border-radius:3px;transition:width .2s}
         .progress-text{text-align:center;margin-top:8px;font-size:13px;color:#6b7280}
-        
         .results{margin-top:20px}
         .result-row{display:flex;gap:12px;margin-bottom:16px}
         .result-card{flex:1;text-align:center;padding:16px;background:#f9fafb;border-radius:6px}
         .result-card .num{font-size:28px;font-weight:700;color:#3b82f6}
         .result-card .txt{font-size:12px;color:#6b7280;margin-top:4px}
-        
         .hidden{display:none!important}
         .status{margin-top:12px;padding:10px;border-radius:6px;text-align:center;font-size:13px}
         .status.loading{background:#e0f2fe;color:#0369a1}
         .status.error{background:#fee2e2;color:#991b1b}
+        .status.success{background:#dcfce7;color:#166534}
+        .debug{margin-top:10px;padding:10px;background:#fef3c7;border-radius:6px;font-size:11px;color:#92400e;max-height:150px;overflow-y:auto}
     </style>
 </head>
 <body>
 <div class="container">
-    <!-- Step 1 -->
     <div id="step1" class="card">
         <div class="steps">
             <span class="step-num">1</span><span class="step-text">Upload</span>
@@ -127,7 +106,6 @@
         <div id="status" class="status hidden"></div>
     </div>
 
-    <!-- Step 2 -->
     <div id="step2" class="card hidden">
         <div class="steps">
             <span class="step-num">1</span><span class="step-text">Upload</span>
@@ -136,19 +114,15 @@
             <span class="step-arrow">→</span>
             <span class="step-num gray">3</span><span class="step-text gray">Done</span>
         </div>
-        
         <h2>📋 Map Your Columns</h2>
-        
         <div class="sheets-box">
             <p>Found <strong id="sheetCount">0</strong> sheets in this file. Select ALL column names that contain product codes, descriptions, and prices.</p>
             <div class="sheet-tags" id="sheetTags"></div>
         </div>
-        
         <div class="vendor-row">
             <label>Vendor Name *</label>
             <input type="text" id="vendorName" placeholder="Enter vendor name (e.g., HIKVISION SA)">
         </div>
-        
         <div class="selects-row">
             <div class="select-col">
                 <label>Product Code Columns <span class="req">*</span></label>
@@ -172,7 +146,6 @@
                 </div>
             </div>
         </div>
-        
         <div class="markup-box">
             <div class="markup-example">
                 <div class="label">Example Calculation:</div>
@@ -183,16 +156,13 @@
                 <span>% markup. Both cost price and selling price will be stored.</span>
             </div>
         </div>
-        
         <div class="info-text">💡 Select multiple columns for product codes and prices. The system will try each one on every sheet.</div>
-        
         <div class="btn-row">
             <button class="btn btn-back" onclick="reset()">Back</button>
             <button class="btn btn-import" onclick="doImport()">Import All Products ✓</button>
         </div>
     </div>
 
-    <!-- Step 3 -->
     <div id="step3" class="card hidden">
         <div class="steps">
             <span class="step-num">1</span><span class="step-text">Upload</span>
@@ -206,6 +176,7 @@
             <div class="progress-bar-bg"><div class="progress-bar" id="pbar" style="width:0"></div></div>
             <div class="progress-text" id="ptxt">Preparing...</div>
         </div>
+        <div id="debugLog" class="debug hidden"></div>
         <div id="results" class="results hidden">
             <div class="result-row">
                 <div class="result-card"><div class="num" id="rImported">0</div><div class="txt">Products Imported</div></div>
@@ -218,10 +189,61 @@
 </div>
 
 <script>
+// CONFIGURATION - Update these to match your Zoho Creator app
+var CONFIG = {
+    ownerName: "florbtech",
+    appName: "forbtech-pricelist-manager",
+    // Form names - will try these in order
+    vendorsForm: "Vendors",
+    productsForm: "Products", 
+    priceListsForm: "Price_Lists",
+    // Field names for Products form
+    productFields: {
+        code: "product_code",
+        description: "description", 
+        costPrice: "cost_price",
+        sellingPrice: "selling_price",
+        markup: "markup_percent",
+        vendor: "vendor_name",
+        category: "category"
+    },
+    // Field names for Vendors form
+    vendorFields: {
+        name: "name"
+    },
+    // Field names for Price Lists form
+    priceListFields: {
+        fileName: "File_Name",
+        vendorName: "Vendor_Name",
+        uploadDate: "Upload_Date",
+        productCount: "Product_Count"
+    }
+};
+
 var wb=null,allData=[],fileName='',cols=[],zoho=false;
 var selCode=[],selDesc=[],selPrice=[];
+var debugMessages=[];
 
-if(typeof ZOHO!=='undefined'&&ZOHO.CREATOR){ZOHO.CREATOR.init().then(function(){zoho=true}).catch(function(){});}
+function log(msg){
+    debugMessages.push(new Date().toLocaleTimeString()+': '+msg);
+    console.log(msg);
+    var el=document.getElementById('debugLog');
+    if(el){el.innerHTML=debugMessages.join('<br>');el.classList.remove('hidden');}
+}
+
+// Initialize Zoho SDK
+if(typeof ZOHO!=='undefined'&&ZOHO.CREATOR){
+    ZOHO.CREATOR.init()
+        .then(function(){
+            zoho=true;
+            log('✓ Zoho SDK initialized');
+        })
+        .catch(function(e){
+            log('✗ Zoho SDK error: '+JSON.stringify(e));
+        });
+}else{
+    log('Running outside Zoho Creator');
+}
 
 function handleFile(inp){
     if(!inp.files||!inp.files[0])return;
@@ -250,7 +272,8 @@ function handleFile(inp){
             if(wb.SheetNames.length>mx)tg+='<span class="sheet-tag more">+'+(wb.SheetNames.length-mx)+' more</span>';
             document.getElementById('sheetTags').innerHTML=tg;
             fillDD();autoSel();
-        }catch(err){showSt('Error: '+err.message,'error');}
+            log('Loaded '+allData.length+' rows from '+wb.SheetNames.length+' sheets');
+        }catch(err){showSt('Error: '+err.message,'error');log('Error: '+err.message);}
     };
     r.readAsArrayBuffer(f);
 }
@@ -304,7 +327,7 @@ function mark(listId,i){var cb=document.querySelector('#'+listId+' input[data-i=
 function calcEx(){var m=parseFloat(document.getElementById('markup').value)||45;document.getElementById('exCost').textContent='1000.00';document.getElementById('exSell').textContent=(1000*(1+m/100)).toFixed(2);}
 
 function reset(){
-    wb=null;allData=[];fileName='';cols=[];selCode=[];selDesc=[];selPrice=[];
+    wb=null;allData=[];fileName='';cols=[];selCode=[];selDesc=[];selPrice=[];debugMessages=[];
     document.getElementById('fileInput').value='';
     document.getElementById('vendorName').value='';
     document.getElementById('step1').classList.remove('hidden');
@@ -312,10 +335,100 @@ function reset(){
     document.getElementById('step3').classList.add('hidden');
     document.getElementById('status').classList.add('hidden');
     document.getElementById('results').classList.add('hidden');
+    document.getElementById('debugLog').classList.add('hidden');
 }
 
 function gv(row,names){for(var i=0;i<names.length;i++){var x=row.h.indexOf(names[i]);if(x!==-1&&row.d[x]!==undefined&&row.d[x]!=='')return row.d[x];}return '';}
 function gn(row,names){for(var i=0;i<names.length;i++){var x=row.h.indexOf(names[i]);if(x!==-1){var v=row.d[x];if(v!==undefined&&v!==''){var n=parseFloat(String(v).replace(/[^0-9.-]/g,''));if(!isNaN(n)&&n>0)return n;}}}return 0;}
+
+// Check if vendor exists, if not create it
+async function ensureVendor(vendorName){
+    if(!zoho)return true;
+    
+    try{
+        // Search for existing vendor
+        log('Checking if vendor exists: '+vendorName);
+        var searchConfig = {
+            appName: CONFIG.appName,
+            reportName: CONFIG.vendorsForm+"_Report",
+            criteria: CONFIG.vendorFields.name+" == \""+vendorName+"\""
+        };
+        
+        var result = await ZOHO.CREATOR.API.getRecords(searchConfig);
+        log('Vendor search result: '+JSON.stringify(result));
+        
+        if(result && result.data && result.data.length > 0){
+            log('Vendor already exists');
+            return true;
+        }
+        
+        // Create new vendor
+        log('Creating new vendor: '+vendorName);
+        var vendorData = {};
+        vendorData[CONFIG.vendorFields.name] = vendorName;
+        
+        var createResult = await ZOHO.CREATOR.API.addRecord({
+            appName: CONFIG.appName,
+            formName: CONFIG.vendorsForm,
+            data: {data: vendorData}
+        });
+        log('Vendor created: '+JSON.stringify(createResult));
+        return true;
+    }catch(e){
+        log('Vendor error: '+JSON.stringify(e));
+        return false;
+    }
+}
+
+// Create price list record
+async function createPriceList(vendorName, productCount){
+    if(!zoho)return true;
+    
+    try{
+        log('Creating price list record...');
+        var data = {};
+        data[CONFIG.priceListFields.fileName] = fileName;
+        data[CONFIG.priceListFields.vendorName] = vendorName;
+        data[CONFIG.priceListFields.uploadDate] = new Date().toISOString().split('T')[0];
+        data[CONFIG.priceListFields.productCount] = productCount;
+        
+        var result = await ZOHO.CREATOR.API.addRecord({
+            appName: CONFIG.appName,
+            formName: CONFIG.priceListsForm,
+            data: {data: data}
+        });
+        log('Price list created: '+JSON.stringify(result));
+        return true;
+    }catch(e){
+        log('Price list error: '+JSON.stringify(e));
+        return false;
+    }
+}
+
+// Create product record
+async function createProduct(code, desc, costPrice, sellingPrice, markup, vendorName){
+    if(!zoho){return true;}
+    
+    try{
+        var data = {};
+        data[CONFIG.productFields.code] = String(code);
+        data[CONFIG.productFields.description] = String(desc || '');
+        data[CONFIG.productFields.costPrice] = costPrice;
+        data[CONFIG.productFields.sellingPrice] = sellingPrice;
+        data[CONFIG.productFields.markup] = markup;
+        data[CONFIG.productFields.vendor] = vendorName;
+        
+        var result = await ZOHO.CREATOR.API.addRecord({
+            appName: CONFIG.appName,
+            formName: CONFIG.productsForm,
+            data: {data: data}
+        });
+        return true;
+    }catch(e){
+        log('Product error: '+JSON.stringify(e));
+        return false;
+    }
+}
 
 async function doImport(){
     var vn=document.getElementById('vendorName').value.trim();
@@ -323,31 +436,52 @@ async function doImport(){
     if(!vn){alert('Enter vendor name');return;}
     if(!selCode.length){alert('Select Product Code columns');return;}
     if(!selPrice.length){alert('Select Price columns');return;}
+    
     var cn=selCode.map(function(i){return cols[i];}),dn=selDesc.map(function(i){return cols[i];}),pn=selPrice.map(function(i){return cols[i];});
     
     document.getElementById('step2').classList.add('hidden');
     document.getElementById('step3').classList.remove('hidden');
+    debugMessages=[];
+    
     var bar=document.getElementById('pbar'),txt=document.getElementById('ptxt');
     var tot=allData.length,imp=0,skip=0;
-    txt.textContent='Creating price list...';bar.style.width='5%';
     
-    if(zoho){try{await ZOHO.CREATOR.API.addRecord({appName:"forbtech-pricelist-manager",formName:"Price_Lists",data:{data:{File_Name:fileName,Vendor_Name:vn,Upload_Date:new Date().toISOString().split('T')[0],Product_Count:tot}}});}catch(e){}}
+    // Step 1: Ensure vendor exists
+    txt.textContent='Checking/creating vendor...';
+    bar.style.width='5%';
+    await ensureVendor(vn);
+    
+    // Step 2: Create price list
+    txt.textContent='Creating price list record...';
     bar.style.width='10%';
+    await createPriceList(vn, tot);
+    
+    // Step 3: Import products
+    txt.textContent='Importing products: 0/'+tot;
     
     for(var i=0;i<tot;i++){
         var r=allData[i],code=gv(r,cn),price=gn(r,pn),desc=dn.length?gv(r,dn):'';
         if(!code||price===0){skip++;continue;}
+        
         var sell=Math.round(price*(1+mk/100)*100)/100;
-        if(zoho){try{await ZOHO.CREATOR.API.addRecord({appName:"forbtech-pricelist-manager",formName:"Products",data:{data:{product_code:String(code),description:String(desc),cost_price:price,selling_price:sell,markup_percent:mk,vendor_name:vn}}});imp++;}catch(e){skip++;}}
-        else{imp++;}
-        if(i%10===0||i===tot-1){bar.style.width=(10+90*(i+1)/tot)+'%';txt.textContent='Processing '+(i+1)+'/'+tot;}
+        
+        var success = await createProduct(code, desc, price, sell, mk, vn);
+        if(success){imp++;}else{skip++;}
+        
+        if(i%10===0||i===tot-1){
+            bar.style.width=(10+90*(i+1)/tot)+'%';
+            txt.textContent='Importing: '+(i+1)+'/'+tot+' ('+imp+' added)';
+        }
     }
+    
+    log('Import complete: '+imp+' imported, '+skip+' skipped');
     document.getElementById('title3').textContent='✓ Import Complete!';
     document.getElementById('rImported').textContent=imp;
     document.getElementById('rSkipped').textContent=skip;
     document.getElementById('rVendor').textContent=vn;
     document.getElementById('results').classList.remove('hidden');
-    bar.style.width='100%';txt.textContent='Done!';
+    bar.style.width='100%';
+    txt.textContent='Done!';
 }
 </script>
 </body>
