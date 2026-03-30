@@ -1017,6 +1017,16 @@ async def download_widget_guide():
     raise HTTPException(status_code=404, detail="Guide not found")
 
 
+# Serve widget HTML files
+@app.get("/widget/{filename}")
+async def serve_widget(filename: str):
+    """Serve widget HTML files"""
+    widget_path = Path(f"/app/zoho_widget/{filename}")
+    if widget_path.exists() and filename.endswith('.html'):
+        return FileResponse(widget_path, media_type="text/html")
+    raise HTTPException(status_code=404, detail="Widget not found")
+
+
 # Include the router in the main app
 app.include_router(api_router)
 

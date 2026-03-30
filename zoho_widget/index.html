@@ -3,486 +3,770 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Price List Uploader</title>
+    <title>Price Check - Vendor Comparison</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        *{margin:0;padding:0;box-sizing:border-box}
-        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f8f9fa;padding:20px;color:#333}
-        .container{max-width:850px;margin:0 auto}
-        .card{background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.1);padding:24px;margin-bottom:20px}
-        .steps{display:flex;justify-content:center;align-items:center;gap:8px;margin-bottom:30px;font-size:14px}
-        .step-num{width:26px;height:26px;border-radius:50%;background:#3b82f6;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:600;font-size:12px}
-        .step-num.gray{background:#9ca3af}
-        .step-text{margin-left:6px;color:#3b82f6}
-        .step-text.gray{color:#9ca3af}
-        .step-arrow{color:#d1d5db;margin:0 8px}
-        .upload-area{border:2px dashed #d1d5db;border-radius:8px;padding:50px;text-align:center;background:#fafafa;cursor:pointer}
-        .upload-area:hover{border-color:#3b82f6;background:#f0f7ff}
-        .upload-icon{font-size:40px;margin-bottom:12px}
-        .upload-text{font-size:15px;color:#374151;margin-bottom:6px}
-        .upload-hint{font-size:13px;color:#9ca3af}
-        .file-label{display:inline-block;margin-top:16px;padding:12px 28px;background:#3b82f6;color:#fff;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer}
-        .file-label:hover{background:#2563eb}
-        .file-label input{display:none}
-        h2{font-size:16px;color:#111;margin-bottom:20px;display:flex;align-items:center;gap:8px}
-        .sheets-box{background:#eef2ff;border-radius:6px;padding:14px;margin-bottom:20px}
-        .sheets-box p{font-size:13px;color:#374151;margin-bottom:10px}
-        .sheets-box strong{color:#3b82f6}
-        .sheet-tags{display:flex;flex-wrap:wrap;gap:6px}
-        .sheet-tag{padding:4px 10px;background:#3b82f6;color:#fff;border-radius:4px;font-size:11px}
-        .sheet-tag.more{background:#6b7280}
-        .vendor-row{margin-bottom:20px}
-        .vendor-row label{display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;text-transform:uppercase}
-        .vendor-row input{width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:14px}
-        .vendor-row input:focus{outline:none;border-color:#3b82f6}
-        .selects-row{display:flex;gap:12px;margin-bottom:20px}
-        .select-col{flex:1}
-        .select-col label{display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:6px;text-transform:uppercase}
-        .select-col label .req{color:#ef4444}
-        .dropdown{position:relative}
-        .dropdown-btn{width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;background:#fff;text-align:left;cursor:pointer;font-size:13px;color:#6b7280;display:flex;justify-content:space-between;align-items:center}
-        .dropdown-btn:hover{border-color:#9ca3af}
-        .dropdown-btn .arrow{font-size:10px}
-        .dropdown-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #d1d5db;border-radius:6px;box-shadow:0 4px 6px rgba(0,0,0,.1);z-index:100;max-height:220px;overflow-y:auto;display:none}
-        .dropdown-list.open{display:block}
-        .dropdown-item{padding:8px 12px;display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;border-bottom:1px solid #f3f4f6}
-        .dropdown-item:last-child{border-bottom:none}
-        .dropdown-item:hover{background:#f9fafb}
-        .dropdown-item input{width:14px;height:14px}
-        .dropdown-item.checked{background:#eff6ff}
-        .markup-box{background:#dcfce7;border-radius:6px;padding:16px;margin-bottom:20px}
-        .markup-example{background:#fff;border:1px dashed #86efac;border-radius:4px;padding:12px;text-align:center;margin-bottom:12px}
-        .markup-example .label{font-size:11px;color:#6b7280;margin-bottom:4px}
-        .markup-example .calc{font-size:14px}
-        .markup-example .cost{color:#6b7280}
-        .markup-example .selling{color:#22c55e;font-weight:600}
-        .markup-row{display:flex;align-items:center;gap:8px;font-size:13px;color:#166534}
-        .markup-row input{width:60px;padding:6px 8px;border:1px solid #86efac;border-radius:4px;text-align:center;font-size:14px}
-        .info-text{font-size:12px;color:#6b7280;padding:10px;background:#f9fafb;border-radius:4px;margin-bottom:20px}
-        .btn-row{display:flex;gap:12px}
-        .btn{flex:1;padding:12px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;border:none;text-align:center}
-        .btn-back{background:#f3f4f6;color:#374151}
-        .btn-back:hover{background:#e5e7eb}
-        .btn-import{background:#3b82f6;color:#fff}
-        .btn-import:hover{background:#2563eb}
-        .btn-success{background:#22c55e;color:#fff}
-        .progress-box{margin:20px 0}
-        .progress-bar-bg{height:6px;background:#e5e7eb;border-radius:3px}
-        .progress-bar{height:100%;background:#3b82f6;border-radius:3px;transition:width .2s}
-        .progress-text{text-align:center;margin-top:8px;font-size:13px;color:#6b7280}
-        .results{margin-top:20px}
-        .result-row{display:flex;gap:12px;margin-bottom:16px}
-        .result-card{flex:1;text-align:center;padding:16px;background:#f9fafb;border-radius:6px}
-        .result-card .num{font-size:28px;font-weight:700;color:#3b82f6}
-        .result-card .txt{font-size:12px;color:#6b7280;margin-top:4px}
-        .hidden{display:none!important}
-        .status{margin-top:12px;padding:10px;border-radius:6px;text-align:center;font-size:13px}
-        .status.loading{background:#e0f2fe;color:#0369a1}
-        .status.error{background:#fee2e2;color:#991b1b}
-        .status.success{background:#dcfce7;color:#166534}
-        .debug{margin-top:10px;padding:10px;background:#fef3c7;border-radius:6px;font-size:11px;color:#92400e;max-height:150px;overflow-y:auto}
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            --sidebar-width: 200px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--gray-100); color: var(--gray-800); }
+        
+        .app { display: flex; min-height: 100vh; }
+        
+        .sidebar { width: var(--sidebar-width); background: var(--gray-900); color: white; padding: 20px 0; position: fixed; height: 100vh; overflow-y: auto; }
+        .sidebar-header { padding: 0 16px 20px; border-bottom: 1px solid var(--gray-700); }
+        .sidebar-title { font-size: 16px; font-weight: 700; color: var(--primary); }
+        .sidebar-subtitle { font-size: 10px; color: var(--gray-400); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+        .sidebar-nav { padding: 12px 0; }
+        .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: var(--gray-400); cursor: pointer; transition: all 0.2s; font-size: 13px; }
+        .nav-item:hover { background: var(--gray-800); color: white; }
+        .nav-item.active { background: var(--primary); color: white; }
+        .nav-item i { width: 18px; text-align: center; }
+        
+        .main { flex: 1; margin-left: var(--sidebar-width); padding: 20px; }
+        .page { display: none; }
+        .page.active { display: block; }
+        .page-header { margin-bottom: 20px; }
+        .page-title { font-size: 22px; font-weight: 600; color: var(--gray-900); }
+        .page-subtitle { font-size: 13px; color: var(--gray-500); margin-top: 2px; }
+        
+        .card { background: white; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 16px; margin-bottom: 16px; }
+        .card-title { font-size: 12px; font-weight: 600; color: var(--gray-600); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+        .stat-card { background: white; border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .stat-value { font-size: 28px; font-weight: 700; color: var(--gray-900); }
+        .stat-label { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+        .stat-card.primary { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); }
+        .stat-card.primary .stat-value, .stat-card.primary .stat-label { color: white; }
+        
+        .search-box { position: relative; margin-bottom: 16px; }
+        .search-box input { width: 100%; padding: 12px 16px 12px 44px; border: 2px solid var(--gray-200); border-radius: 8px; font-size: 14px; }
+        .search-box input:focus { outline: none; border-color: var(--primary); }
+        .search-box i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--gray-400); }
+        
+        .table-wrapper { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { text-align: left; padding: 10px 12px; background: var(--gray-50); color: var(--gray-600); font-weight: 600; font-size: 11px; text-transform: uppercase; border-bottom: 2px solid var(--gray-200); }
+        td { padding: 10px 12px; border-bottom: 1px solid var(--gray-100); }
+        tr:hover { background: var(--gray-50); }
+        .vendor-badge { display: inline-block; padding: 3px 8px; background: var(--success); color: white; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; }
+        .price { font-weight: 600; color: var(--gray-900); }
+        
+        .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all 0.2s; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-secondary { background: var(--gray-100); color: var(--gray-700); }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-sm { padding: 5px 10px; font-size: 11px; }
+        
+        .upload-area { border: 2px dashed var(--gray-300); border-radius: 10px; padding: 32px; text-align: center; background: var(--gray-50); cursor: pointer; transition: all 0.2s; }
+        .upload-area:hover { border-color: var(--primary); background: #eff6ff; }
+        .upload-area i { font-size: 36px; color: var(--gray-400); margin-bottom: 10px; }
+        .upload-area h3 { font-size: 14px; color: var(--gray-700); margin-bottom: 4px; }
+        .upload-area p { font-size: 12px; color: var(--gray-500); }
+        
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--gray-700); margin-bottom: 4px; }
+        .form-group input, .form-group select { width: 100%; padding: 8px 12px; border: 1px solid var(--gray-300); border-radius: 6px; font-size: 13px; }
+        .form-group input:focus { outline: none; border-color: var(--primary); }
+        
+        .dropdown { position: relative; }
+        .dropdown-btn { width: 100%; padding: 8px 12px; border: 1px solid var(--gray-300); border-radius: 6px; background: white; text-align: left; cursor: pointer; font-size: 13px; color: var(--gray-500); display: flex; justify-content: space-between; align-items: center; }
+        .dropdown-btn.has-value { color: var(--gray-800); }
+        .dropdown-list { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--gray-300); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 100; max-height: 180px; overflow-y: auto; display: none; }
+        .dropdown-list.open { display: block; }
+        .dropdown-item { padding: 8px 12px; display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; }
+        .dropdown-item:hover { background: var(--gray-50); }
+        .dropdown-item.selected { background: #eff6ff; }
+        .dropdown-item input { width: 14px; height: 14px; }
+        
+        .steps { display: flex; justify-content: center; gap: 6px; margin-bottom: 20px; font-size: 13px; }
+        .step { display: flex; align-items: center; gap: 6px; color: var(--gray-400); }
+        .step.active { color: var(--primary); font-weight: 600; }
+        .step.done { color: var(--success); }
+        .step-num { width: 24px; height: 24px; border-radius: 50%; background: var(--gray-200); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 11px; }
+        .step.active .step-num { background: var(--primary); color: white; }
+        .step.done .step-num { background: var(--success); color: white; }
+        
+        .sheet-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+        .sheet-tag { padding: 3px 8px; background: var(--primary); color: white; border-radius: 4px; font-size: 10px; }
+        .sheet-tag.more { background: var(--gray-500); }
+        
+        .markup-box { background: #dcfce7; border: 1px solid #86efac; border-radius: 6px; padding: 12px; margin: 12px 0; }
+        .markup-example { background: white; border-radius: 4px; padding: 10px; text-align: center; margin-bottom: 8px; }
+        .markup-example .label { font-size: 11px; color: var(--gray-500); }
+        .markup-example .calc { font-size: 14px; margin-top: 2px; }
+        .markup-example .cost { color: var(--gray-600); }
+        .markup-example .selling { color: var(--success); font-weight: 600; }
+        
+        .progress-bar { height: 6px; background: var(--gray-200); border-radius: 3px; overflow: hidden; }
+        .progress-bar .fill { height: 100%; background: var(--primary); border-radius: 3px; transition: width 0.3s; }
+        .progress-text { text-align: center; margin-top: 6px; font-size: 12px; color: var(--gray-500); }
+        
+        .results-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0; }
+        .result-card { text-align: center; padding: 16px; background: var(--gray-50); border-radius: 6px; }
+        .result-card .num { font-size: 28px; font-weight: 700; color: var(--primary); }
+        .result-card .txt { font-size: 11px; color: var(--gray-500); margin-top: 2px; }
+        
+        .loading { text-align: center; padding: 32px; color: var(--gray-500); }
+        .loading i { font-size: 20px; margin-bottom: 8px; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .empty-state { text-align: center; padding: 40px 16px; color: var(--gray-500); }
+        .empty-state i { font-size: 40px; margin-bottom: 12px; color: var(--gray-300); }
+        .empty-state h3 { font-size: 16px; color: var(--gray-700); margin-bottom: 6px; }
+        .empty-state p { font-size: 13px; }
+        
+        .error-box { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 12px; border-radius: 6px; margin: 12px 0; font-size: 12px; }
+        
+        .hidden { display: none !important; }
+        
+        @media (max-width: 768px) {
+            .sidebar { width: 50px; }
+            .sidebar-title, .sidebar-subtitle, .nav-item span { display: none; }
+            .main { margin-left: 50px; padding: 12px; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .results-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
-<div class="container">
-    <div id="step1" class="card">
-        <div class="steps">
-            <span class="step-num">1</span><span class="step-text">Upload</span>
-            <span class="step-arrow">→</span>
-            <span class="step-num gray">2</span><span class="step-text gray">Map Columns</span>
-            <span class="step-arrow">→</span>
-            <span class="step-num gray">3</span><span class="step-text gray">Done</span>
-        </div>
-        <div class="upload-area" onclick="document.getElementById('fileInput').click()">
-            <div class="upload-icon">📁</div>
-            <div class="upload-text">Upload Price List</div>
-            <div class="upload-hint">Import ALL sheets from vendor price lists</div>
-            <label class="file-label">
-                Select Excel File
-                <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="handleFile(this)">
-            </label>
-        </div>
-        <div id="status" class="status hidden"></div>
+    <div class="app">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">PRICE CHECK</div>
+                <div class="sidebar-subtitle">Vendor Comparison</div>
+            </div>
+            <nav class="sidebar-nav">
+                <div class="nav-item active" data-page="dashboard"><i class="fas fa-home"></i><span>Dashboard</span></div>
+                <div class="nav-item" data-page="search"><i class="fas fa-search"></i><span>Price Search</span></div>
+                <div class="nav-item" data-page="upload"><i class="fas fa-upload"></i><span>Upload Pricelist</span></div>
+                <div class="nav-item" data-page="vendors"><i class="fas fa-building"></i><span>Vendors</span></div>
+                <div class="nav-item" data-page="pricelists"><i class="fas fa-file-alt"></i><span>Price Lists</span></div>
+            </nav>
+        </aside>
+
+        <main class="main">
+            <!-- Dashboard -->
+            <div id="page-dashboard" class="page active">
+                <div class="page-header">
+                    <h1 class="page-title">Dashboard</h1>
+                    <p class="page-subtitle">Overview of your price data</p>
+                </div>
+                <div id="dashboard-error" class="error-box hidden"></div>
+                <div class="stats-grid">
+                    <div class="stat-card primary"><div class="stat-value" id="stat-products">0</div><div class="stat-label">Total Products</div></div>
+                    <div class="stat-card"><div class="stat-value" id="stat-vendors">0</div><div class="stat-label">Vendors</div></div>
+                    <div class="stat-card"><div class="stat-value" id="stat-pricelists">0</div><div class="stat-label">Price Lists</div></div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Recent Products</div>
+                    <div id="recent-products"><div class="empty-state"><i class="fas fa-box-open"></i><h3>No products yet</h3><p>Upload a price list to get started</p></div></div>
+                </div>
+            </div>
+
+            <!-- Search -->
+            <div id="page-search" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">Price Search</h1>
+                    <p class="page-subtitle">Find the best prices across all vendors</p>
+                </div>
+                <div class="card">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="search-input" placeholder="Enter product code or description...">
+                    </div>
+                    <div id="search-results"><div class="empty-state"><i class="fas fa-search"></i><h3>Search for products</h3><p>Enter a product code or description above</p></div></div>
+                </div>
+            </div>
+
+            <!-- Upload -->
+            <div id="page-upload" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">Upload Price List</h1>
+                    <p class="page-subtitle">Import ALL sheets from vendor price lists</p>
+                </div>
+                
+                <div id="upload-step1" class="card">
+                    <div class="steps">
+                        <div class="step active"><span class="step-num">1</span>Upload</div>
+                        <div class="step"><span class="step-num">2</span>Map Columns</div>
+                        <div class="step"><span class="step-num">3</span>Done</div>
+                    </div>
+                    <div class="upload-area" onclick="document.getElementById('file-input').click()">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <h3>Drop your Excel file here or click to browse</h3>
+                        <p>Supports .xlsx, .xls, .csv files</p>
+                        <input type="file" id="file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFileUpload(this)">
+                    </div>
+                </div>
+                
+                <div id="upload-step2" class="card hidden">
+                    <div class="steps">
+                        <div class="step done"><span class="step-num"><i class="fas fa-check"></i></span>Upload</div>
+                        <div class="step active"><span class="step-num">2</span>Map Columns</div>
+                        <div class="step"><span class="step-num">3</span>Done</div>
+                    </div>
+                    <div style="background:#eef2ff;border-radius:6px;padding:12px;margin-bottom:16px">
+                        <p style="font-size:12px;color:var(--gray-700)">Found <strong id="sheet-count" style="color:var(--primary)">0</strong> sheets. Select column names for product codes, descriptions, and prices.</p>
+                        <div class="sheet-tags" id="sheet-tags"></div>
+                    </div>
+                    <div class="form-group">
+                        <label>Vendor Name *</label>
+                        <input type="text" id="vendor-name" placeholder="Enter vendor name (e.g., HIKVISION SA)">
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
+                        <div class="form-group" style="margin:0">
+                            <label>Product Code *</label>
+                            <div class="dropdown" id="code-dropdown">
+                                <button type="button" class="dropdown-btn" onclick="toggleDropdown('code-dropdown')"><span>-- Select --</span><i class="fas fa-chevron-down" style="font-size:10px"></i></button>
+                                <div class="dropdown-list" id="code-list"></div>
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin:0">
+                            <label>Description</label>
+                            <div class="dropdown" id="desc-dropdown">
+                                <button type="button" class="dropdown-btn" onclick="toggleDropdown('desc-dropdown')"><span>-- Select --</span><i class="fas fa-chevron-down" style="font-size:10px"></i></button>
+                                <div class="dropdown-list" id="desc-list"></div>
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin:0">
+                            <label>Price *</label>
+                            <div class="dropdown" id="price-dropdown">
+                                <button type="button" class="dropdown-btn" onclick="toggleDropdown('price-dropdown')"><span>-- Select --</span><i class="fas fa-chevron-down" style="font-size:10px"></i></button>
+                                <div class="dropdown-list" id="price-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="markup-box">
+                        <div class="markup-example">
+                            <div class="label">Example Calculation:</div>
+                            <div class="calc"><span class="cost">Cost: R 1000.00</span> → <span class="selling">Selling: R <span id="selling-example">1450.00</span></span></div>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#166534">
+                            <input type="number" id="markup-percent" value="45" min="0" max="500" style="width:60px;text-align:center;padding:6px" onchange="updateMarkupExample()">
+                            <span>% markup</span>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:10px">
+                        <button class="btn btn-secondary" onclick="resetUpload()"><i class="fas fa-arrow-left"></i>Back</button>
+                        <button class="btn btn-primary" onclick="startImport()" style="flex:1"><i class="fas fa-download"></i>Import All Products</button>
+                    </div>
+                </div>
+                
+                <div id="upload-step3" class="card hidden">
+                    <div class="steps">
+                        <div class="step done"><span class="step-num"><i class="fas fa-check"></i></span>Upload</div>
+                        <div class="step done"><span class="step-num"><i class="fas fa-check"></i></span>Map</div>
+                        <div class="step active"><span class="step-num">3</span>Done</div>
+                    </div>
+                    <h2 id="import-title" style="text-align:center;margin-bottom:16px;font-size:18px">Importing...</h2>
+                    <div class="progress-bar"><div class="fill" id="progress-bar" style="width:0%"></div></div>
+                    <p class="progress-text" id="progress-text">Preparing...</p>
+                    <div id="import-results" class="hidden">
+                        <div class="results-grid">
+                            <div class="result-card"><div class="num" id="result-imported">0</div><div class="txt">Imported</div></div>
+                            <div class="result-card"><div class="num" id="result-skipped">0</div><div class="txt">Skipped</div></div>
+                            <div class="result-card"><div class="num" id="result-vendor">-</div><div class="txt">Vendor</div></div>
+                        </div>
+                        <button class="btn btn-primary" onclick="resetUpload()" style="width:100%"><i class="fas fa-plus"></i>Upload Another</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Vendors -->
+            <div id="page-vendors" class="page">
+                <div class="page-header" style="display:flex;justify-content:space-between;align-items:center">
+                    <div><h1 class="page-title">Vendors</h1><p class="page-subtitle">Manage your vendor list</p></div>
+                    <button class="btn btn-primary" onclick="showAddVendorModal()"><i class="fas fa-plus"></i>Add Vendor</button>
+                </div>
+                <div class="card">
+                    <div id="vendors-table"><div class="empty-state"><i class="fas fa-building"></i><h3>No vendors yet</h3><p>Add a vendor or upload a price list</p></div></div>
+                </div>
+            </div>
+
+            <!-- Price Lists -->
+            <div id="page-pricelists" class="page">
+                <div class="page-header"><h1 class="page-title">Price Lists</h1><p class="page-subtitle">View uploaded price lists</p></div>
+                <div class="card">
+                    <div id="pricelists-table"><div class="empty-state"><i class="fas fa-file-alt"></i><h3>No price lists yet</h3><p>Upload a price list to get started</p></div></div>
+                </div>
+            </div>
+        </main>
     </div>
 
-    <div id="step2" class="card hidden">
-        <div class="steps">
-            <span class="step-num">1</span><span class="step-text">Upload</span>
-            <span class="step-arrow">→</span>
-            <span class="step-num">2</span><span class="step-text">Map Columns</span>
-            <span class="step-arrow">→</span>
-            <span class="step-num gray">3</span><span class="step-text gray">Done</span>
-        </div>
-        <h2>📋 Map Your Columns</h2>
-        <div class="sheets-box">
-            <p>Found <strong id="sheetCount">0</strong> sheets in this file. Select ALL column names that contain product codes, descriptions, and prices.</p>
-            <div class="sheet-tags" id="sheetTags"></div>
-        </div>
-        <div class="vendor-row">
-            <label>Vendor Name *</label>
-            <input type="text" id="vendorName" placeholder="Enter vendor name (e.g., HIKVISION SA)">
-        </div>
-        <div class="selects-row">
-            <div class="select-col">
-                <label>Product Code Columns <span class="req">*</span></label>
-                <div class="dropdown" id="codeDD">
-                    <button type="button" class="dropdown-btn" onclick="toggle('codeDD')"><span id="codeLabel">-- Select columns --</span><span class="arrow">▼</span></button>
-                    <div class="dropdown-list" id="codeList"></div>
-                </div>
+    <!-- Vendor Modal -->
+    <div id="vendor-modal" class="hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000">
+        <div class="card" style="width:360px;max-width:90%">
+            <h2 style="margin-bottom:16px;font-size:18px">Add New Vendor</h2>
+            <div class="form-group"><label>Vendor Name *</label><input type="text" id="new-vendor-name" placeholder="Enter vendor name"></div>
+            <div class="form-group"><label>Email</label><input type="email" id="new-vendor-email" placeholder="Enter email"></div>
+            <div class="form-group"><label>Phone</label><input type="text" id="new-vendor-phone" placeholder="Enter phone"></div>
+            <div style="display:flex;gap:10px;margin-top:16px">
+                <button class="btn btn-secondary" onclick="hideVendorModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="addVendor()" style="flex:1">Add Vendor</button>
             </div>
-            <div class="select-col">
-                <label>Description Columns</label>
-                <div class="dropdown" id="descDD">
-                    <button type="button" class="dropdown-btn" onclick="toggle('descDD')"><span id="descLabel">-- Select columns --</span><span class="arrow">▼</span></button>
-                    <div class="dropdown-list" id="descList"></div>
-                </div>
-            </div>
-            <div class="select-col">
-                <label>Price Columns <span class="req">*</span></label>
-                <div class="dropdown" id="priceDD">
-                    <button type="button" class="dropdown-btn" onclick="toggle('priceDD')"><span id="priceLabel">-- Select columns --</span><span class="arrow">▼</span></button>
-                    <div class="dropdown-list" id="priceList"></div>
-                </div>
-            </div>
-        </div>
-        <div class="markup-box">
-            <div class="markup-example">
-                <div class="label">Example Calculation:</div>
-                <div class="calc"><span class="cost">Cost: R <span id="exCost">1000.00</span></span> → <span class="selling">Selling: R <span id="exSell">1450.00</span></span></div>
-            </div>
-            <div class="markup-row">
-                <input type="number" id="markup" value="45" min="0" max="500" onchange="calcEx()">
-                <span>% markup. Both cost price and selling price will be stored.</span>
-            </div>
-        </div>
-        <div class="info-text">💡 Select multiple columns for product codes and prices. The system will try each one on every sheet.</div>
-        <div class="btn-row">
-            <button class="btn btn-back" onclick="reset()">Back</button>
-            <button class="btn btn-import" onclick="doImport()">Import All Products ✓</button>
         </div>
     </div>
-
-    <div id="step3" class="card hidden">
-        <div class="steps">
-            <span class="step-num">1</span><span class="step-text">Upload</span>
-            <span class="step-arrow">→</span>
-            <span class="step-num">2</span><span class="step-text">Map Columns</span>
-            <span class="step-arrow">→</span>
-            <span class="step-num">3</span><span class="step-text">Done</span>
-        </div>
-        <h2 id="title3">Importing...</h2>
-        <div class="progress-box">
-            <div class="progress-bar-bg"><div class="progress-bar" id="pbar" style="width:0"></div></div>
-            <div class="progress-text" id="ptxt">Preparing...</div>
-        </div>
-        <div id="debugLog" class="debug hidden"></div>
-        <div id="results" class="results hidden">
-            <div class="result-row">
-                <div class="result-card"><div class="num" id="rImported">0</div><div class="txt">Products Imported</div></div>
-                <div class="result-card"><div class="num" id="rSkipped">0</div><div class="txt">Rows Skipped</div></div>
-                <div class="result-card"><div class="num" id="rVendor">-</div><div class="txt">Vendor</div></div>
-            </div>
-            <button class="btn btn-success" onclick="reset()" style="width:100%">Upload Another File</button>
-        </div>
-    </div>
-</div>
 
 <script>
-// CONFIGURATION - Update these to match your Zoho Creator app
+// CONFIG - Matching your Zoho Creator setup
 var CONFIG = {
-    ownerName: "florbtech",
-    appName: "forbtech-pricelist-manager",
-    // Form names - will try these in order
-    vendorsForm: "Vendors",
-    productsForm: "Products", 
-    priceListsForm: "Price_Lists",
-    // Field names for Products form
-    productFields: {
-        code: "product_code",
-        description: "description", 
-        costPrice: "cost_price",
-        sellingPrice: "selling_price",
-        markup: "markup_percent",
-        vendor: "vendor_name",
-        category: "category"
+    appName: "fortech-pricelist-manager",
+    forms: { vendors: "Vendors", products: "Products", priceLists: "Price_Lists" },
+    reports: {
+        vendors: ["Vendors_Report"],
+        products: ["Products_Report"],
+        priceLists: ["Price_Lists_Report", "All_Price_Lists"]
     },
-    // Field names for Vendors form
-    vendorFields: {
-        name: "name"
-    },
-    // Field names for Price Lists form
-    priceListFields: {
-        fileName: "File_Name",
-        vendorName: "Vendor_Name",
-        uploadDate: "Upload_Date",
-        productCount: "Product_Count"
+    fields: {
+        vendor: { name: "Name", email: "Contact_Email", phone: "Contact_Phone" },
+        product: { code: "Product_Code", desc: "Description", cost: "Cost_Price", selling: "Selling_Price", markup: "Markup_Percent", vendor: "Vendor_Name" },
+        priceList: { file: "File_Name", vendor: "Vendor_Name", date: "Upload_Date", count: "Product_Count" }
     }
 };
 
-var wb=null,allData=[],fileName='',cols=[],zoho=false;
-var selCode=[],selDesc=[],selPrice=[];
-var debugMessages=[];
+var zohoReady = false;
+var workbook = null, allData = [], allColumns = [], fileName = '';
+var selectedCode = [], selectedDesc = [], selectedPrice = [];
+var cachedProducts = [], cachedVendors = [], cachedPriceLists = [];
 
-function log(msg){
-    debugMessages.push(new Date().toLocaleTimeString()+': '+msg);
-    console.log(msg);
-    var el=document.getElementById('debugLog');
-    if(el){el.innerHTML=debugMessages.join('<br>');el.classList.remove('hidden');}
+// Initialize
+if (typeof ZOHO !== 'undefined' && ZOHO.CREATOR) {
+    ZOHO.CREATOR.init().then(function() {
+        zohoReady = true;
+        console.log('Zoho SDK ready');
+        loadDashboard();
+    }).catch(function(e) {
+        console.error('Zoho init error:', e);
+        showError('dashboard-error', 'Zoho SDK failed to initialize: ' + JSON.stringify(e));
+    });
+} else {
+    console.log('Running outside Zoho - demo mode');
+    document.getElementById('stat-products').textContent = '0';
+    document.getElementById('stat-vendors').textContent = '0';
+    document.getElementById('stat-pricelists').textContent = '0';
 }
 
-// Initialize Zoho SDK
-if(typeof ZOHO!=='undefined'&&ZOHO.CREATOR){
-    ZOHO.CREATOR.init()
-        .then(function(){
-            zoho=true;
-            log('✓ Zoho SDK initialized');
-        })
-        .catch(function(e){
-            log('✗ Zoho SDK error: '+JSON.stringify(e));
-        });
-}else{
-    log('Running outside Zoho Creator');
+// Navigation
+document.querySelectorAll('.nav-item').forEach(function(item) {
+    item.addEventListener('click', function() {
+        var page = this.dataset.page;
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        this.classList.add('active');
+        document.getElementById('page-' + page).classList.add('active');
+        if (page === 'dashboard') loadDashboard();
+        else if (page === 'vendors') loadVendors();
+        else if (page === 'pricelists') loadPriceLists();
+    });
+});
+
+function showError(elementId, message) {
+    var el = document.getElementById(elementId);
+    if (el) { el.textContent = message; el.classList.remove('hidden'); }
 }
 
-function handleFile(inp){
-    if(!inp.files||!inp.files[0])return;
-    var f=inp.files[0];
-    fileName=f.name;
-    showSt('Reading '+fileName+'...','loading');
-    var r=new FileReader();
-    r.onload=function(e){
-        try{
-            wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
-            if(!wb.SheetNames.length){showSt('No sheets','error');return;}
-            cols=[];allData=[];var seen={};
-            wb.SheetNames.forEach(function(sn){
-                var sh=wb.Sheets[sn],js=XLSX.utils.sheet_to_json(sh,{header:1,defval:''});
-                var hi=0;
-                for(var i=0;i<Math.min(15,js.length);i++){var c=0;for(var j=0;j<(js[i]||[]).length;j++)if(js[i][j]!=='')c++;if(c>=3){hi=i;break;}}
-                var hdr=js[hi]||[];
-                hdr.forEach(function(h){if(h&&!seen[h]){seen[h]=1;cols.push(h);}});
-                for(var k=hi+1;k<js.length;k++){var rw=js[k],has=false;for(var l=0;l<rw.length;l++)if(rw[l]!==''){has=true;break;}if(has)allData.push({h:hdr,d:rw});}
+// Try multiple report names
+async function getRecordsWithFallback(reportNames) {
+    if (!zohoReady) {
+        console.log('Zoho not ready, returning empty');
+        return [];
+    }
+    for (var i = 0; i < reportNames.length; i++) {
+        try {
+            console.log('Trying report:', reportNames[i], 'in app:', CONFIG.appName);
+            var result = await ZOHO.CREATOR.API.getAllRecords({
+                appName: CONFIG.appName,
+                reportName: reportNames[i],
+                page: 1,
+                pageSize: 200
             });
-            document.getElementById('step1').classList.add('hidden');
-            document.getElementById('step2').classList.remove('hidden');
-            document.getElementById('sheetCount').textContent=wb.SheetNames.length;
-            var tg='',mx=8;
-            wb.SheetNames.slice(0,mx).forEach(function(n){tg+='<span class="sheet-tag">'+n+'</span>';});
-            if(wb.SheetNames.length>mx)tg+='<span class="sheet-tag more">+'+(wb.SheetNames.length-mx)+' more</span>';
-            document.getElementById('sheetTags').innerHTML=tg;
-            fillDD();autoSel();
-            log('Loaded '+allData.length+' rows from '+wb.SheetNames.length+' sheets');
-        }catch(err){showSt('Error: '+err.message,'error');log('Error: '+err.message);}
-    };
-    r.readAsArrayBuffer(f);
+            console.log('API Response for', reportNames[i], ':', JSON.stringify(result));
+            if (result && result.data) {
+                console.log('SUCCESS - Found', result.data.length, 'records using report:', reportNames[i]);
+                return result.data;
+            }
+            if (result && result.code === 3100) {
+                console.log('Report exists but empty:', reportNames[i]);
+                return [];
+            }
+        } catch (e) {
+            console.error('API Error for report', reportNames[i], ':', e.message || JSON.stringify(e));
+        }
+    }
+    console.log('All report names failed for:', reportNames);
+    return [];
 }
 
-function showSt(m,t){var s=document.getElementById('status');s.className='status '+t;s.textContent=m;s.classList.remove('hidden');}
+async function loadDashboard() {
+    document.getElementById('dashboard-error').classList.add('hidden');
+    document.getElementById('recent-products').innerHTML = '<div class="loading"><i class="fas fa-spinner"></i><p>Loading...</p></div>';
+    
+    try {
+        console.log('Loading dashboard data...');
+        cachedProducts = await getRecordsWithFallback(CONFIG.reports.products);
+        cachedVendors = await getRecordsWithFallback(CONFIG.reports.vendors);
+        cachedPriceLists = await getRecordsWithFallback(CONFIG.reports.priceLists);
+        
+        console.log('Dashboard loaded - Products:', cachedProducts.length, 'Vendors:', cachedVendors.length, 'PriceLists:', cachedPriceLists.length);
+        
+        document.getElementById('stat-products').textContent = cachedProducts.length;
+        document.getElementById('stat-vendors').textContent = cachedVendors.length;
+        document.getElementById('stat-pricelists').textContent = cachedPriceLists.length;
+        
+        if (cachedProducts.length > 0) {
+            var html = '<table><thead><tr><th>Product Code</th><th>Description</th><th>Vendor</th><th>Price</th></tr></thead><tbody>';
+            cachedProducts.slice(0, 10).forEach(function(p) {
+                html += '<tr><td><strong>' + (p[CONFIG.fields.product.code] || '-') + '</strong></td>';
+                html += '<td>' + (p[CONFIG.fields.product.desc] || '-').substring(0, 40) + '</td>';
+                html += '<td><span class="vendor-badge">' + (p[CONFIG.fields.product.vendor] || '-') + '</span></td>';
+                html += '<td class="price">R ' + formatNum(p[CONFIG.fields.product.selling]) + '</td></tr>';
+            });
+            html += '</tbody></table>';
+            document.getElementById('recent-products').innerHTML = html;
+        } else {
+            document.getElementById('recent-products').innerHTML = '<div class="empty-state"><i class="fas fa-box-open"></i><h3>No products yet</h3><p>Upload a price list to get started</p></div>';
+        }
+    } catch (e) {
+        console.error('Dashboard error:', e);
+        showError('dashboard-error', 'Error loading data: ' + (e.message || JSON.stringify(e)));
+        document.getElementById('recent-products').innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><h3>Connection Error</h3><p>Check console for details</p></div>';
+    }
+}
 
-function fillDD(){
-    ['codeList','descList','priceList'].forEach(function(id){
-        var el=document.getElementById(id);el.innerHTML='';
-        cols.forEach(function(c,i){
-            var d=document.createElement('div');d.className='dropdown-item';d.innerHTML='<input type="checkbox" data-i="'+i+'" onchange="chk(this,\''+id+'\')"><span>'+c+'</span>';
-            el.appendChild(d);
+// Search
+var searchTimeout;
+document.getElementById('search-input').addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    var q = this.value.trim().toLowerCase();
+    if (q.length < 2) {
+        document.getElementById('search-results').innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><h3>Search for products</h3><p>Enter at least 2 characters</p></div>';
+        return;
+    }
+    searchTimeout = setTimeout(function() { searchProducts(q); }, 300);
+});
+
+async function searchProducts(q) {
+    document.getElementById('search-results').innerHTML = '<div class="loading"><i class="fas fa-spinner"></i><p>Searching...</p></div>';
+    
+    if (cachedProducts.length === 0) {
+        cachedProducts = await getRecordsWithFallback(CONFIG.reports.products);
+    }
+    
+    var results = cachedProducts.filter(function(p) {
+        var code = (p[CONFIG.fields.product.code] || '').toLowerCase();
+        var desc = (p[CONFIG.fields.product.desc] || '').toLowerCase();
+        return code.includes(q) || desc.includes(q);
+    });
+    
+    results.sort(function(a, b) {
+        return (parseFloat(a[CONFIG.fields.product.selling]) || 0) - (parseFloat(b[CONFIG.fields.product.selling]) || 0);
+    });
+    
+    if (!results.length) {
+        document.getElementById('search-results').innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><h3>No results</h3><p>Try a different search term</p></div>';
+        return;
+    }
+    
+    var html = '<p style="margin-bottom:10px;font-size:12px;color:var(--gray-500)">Found ' + results.length + ' results (cheapest first)</p>';
+    html += '<table><thead><tr><th>Product Code</th><th>Description</th><th>Vendor</th><th>Cost</th><th>Selling</th></tr></thead><tbody>';
+    results.forEach(function(p, i) {
+        var bg = i === 0 ? 'style="background:#dcfce7"' : '';
+        html += '<tr ' + bg + '><td><strong>' + (p[CONFIG.fields.product.code] || '-') + '</strong></td>';
+        html += '<td>' + (p[CONFIG.fields.product.desc] || '-').substring(0, 30) + '</td>';
+        html += '<td><span class="vendor-badge">' + (p[CONFIG.fields.product.vendor] || '-') + '</span></td>';
+        html += '<td>R ' + formatNum(p[CONFIG.fields.product.cost]) + '</td>';
+        html += '<td class="price">R ' + formatNum(p[CONFIG.fields.product.selling]) + '</td></tr>';
+    });
+    html += '</tbody></table>';
+    document.getElementById('search-results').innerHTML = html;
+}
+
+// File Upload
+function handleFileUpload(input) {
+    if (!input.files || !input.files[0]) return;
+    var file = input.files[0];
+    fileName = file.name;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+            if (!workbook.SheetNames.length) { alert('No sheets found'); return; }
+            allColumns = []; allData = []; var seen = {};
+            workbook.SheetNames.forEach(function(sn) {
+                var sheet = workbook.Sheets[sn];
+                var json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+                var hi = 0;
+                for (var i = 0; i < Math.min(15, json.length); i++) {
+                    var c = 0; for (var j = 0; j < (json[i] || []).length; j++) if (json[i][j] !== '') c++;
+                    if (c >= 3) { hi = i; break; }
+                }
+                var hdr = json[hi] || [];
+                hdr.forEach(function(h) { if (h && !seen[h]) { seen[h] = 1; allColumns.push(h); } });
+                for (var k = hi + 1; k < json.length; k++) {
+                    var rw = json[k], has = false;
+                    for (var l = 0; l < rw.length; l++) if (rw[l] !== '') { has = true; break; }
+                    if (has) allData.push({ h: hdr, d: rw });
+                }
+            });
+            document.getElementById('upload-step1').classList.add('hidden');
+            document.getElementById('upload-step2').classList.remove('hidden');
+            document.getElementById('sheet-count').textContent = workbook.SheetNames.length;
+            var tags = '';
+            workbook.SheetNames.slice(0, 6).forEach(function(n) { tags += '<span class="sheet-tag">' + n + '</span>'; });
+            if (workbook.SheetNames.length > 6) tags += '<span class="sheet-tag more">+' + (workbook.SheetNames.length - 6) + '</span>';
+            document.getElementById('sheet-tags').innerHTML = tags;
+            populateDropdowns();
+            autoSelect();
+        } catch (err) { alert('Error: ' + err.message); }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function populateDropdowns() {
+    ['code-list', 'desc-list', 'price-list'].forEach(function(id) {
+        var el = document.getElementById(id); el.innerHTML = '';
+        allColumns.forEach(function(col, i) {
+            var div = document.createElement('div');
+            div.className = 'dropdown-item';
+            div.innerHTML = '<input type="checkbox" data-idx="' + i + '" onchange="handleColSelect(this,\'' + id + '\')"><span>' + col + '</span>';
+            el.appendChild(div);
         });
     });
 }
 
-function toggle(id){
-    var list=document.getElementById(id).querySelector('.dropdown-list');
-    document.querySelectorAll('.dropdown-list').forEach(function(l){if(l!==list)l.classList.remove('open');});
+function toggleDropdown(id) {
+    var list = document.getElementById(id).querySelector('.dropdown-list');
+    document.querySelectorAll('.dropdown-list').forEach(function(l) { if (l !== list) l.classList.remove('open'); });
     list.classList.toggle('open');
 }
-document.addEventListener('click',function(e){if(!e.target.closest('.dropdown'))document.querySelectorAll('.dropdown-list').forEach(function(l){l.classList.remove('open');});});
 
-function chk(cb,listId){
-    var i=parseInt(cb.dataset.i),arr,lbl;
-    if(listId==='codeList'){arr=selCode;lbl='codeLabel';}
-    else if(listId==='descList'){arr=selDesc;lbl='descLabel';}
-    else{arr=selPrice;lbl='priceLabel';}
-    var p=arr.indexOf(i);
-    if(cb.checked&&p===-1)arr.push(i);
-    else if(!cb.checked&&p!==-1)arr.splice(p,1);
-    cb.parentElement.classList.toggle('checked',cb.checked);
-    document.getElementById(lbl).textContent=arr.length?arr.length+' selected':'-- Select columns --';
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.dropdown')) document.querySelectorAll('.dropdown-list').forEach(function(l) { l.classList.remove('open'); });
+});
+
+function handleColSelect(cb, listId) {
+    var idx = parseInt(cb.dataset.idx);
+    var arr = listId === 'code-list' ? selectedCode : listId === 'desc-list' ? selectedDesc : selectedPrice;
+    if (cb.checked && arr.indexOf(idx) === -1) arr.push(idx);
+    else if (!cb.checked) { var p = arr.indexOf(idx); if (p !== -1) arr.splice(p, 1); }
+    cb.parentElement.classList.toggle('selected', cb.checked);
+    var btn = document.querySelector('#' + listId.replace('-list', '-dropdown') + ' .dropdown-btn span');
+    btn.textContent = arr.length ? arr.length + ' selected' : '-- Select --';
 }
 
-function autoSel(){
-    selCode=[];selDesc=[];selPrice=[];
-    var cp=['code','item','sku','part','model'],dp=['desc','name','spec','title'],pp=['price','cost','rate','reseller','standard','amount'];
-    cols.forEach(function(c,i){
-        var l=c.toLowerCase();
-        cp.forEach(function(p){if(l.indexOf(p)!==-1&&selCode.indexOf(i)===-1){selCode.push(i);mark('codeList',i);}});
-        dp.forEach(function(p){if(l.indexOf(p)!==-1&&selDesc.indexOf(i)===-1){selDesc.push(i);mark('descList',i);}});
-        pp.forEach(function(p){if(l.indexOf(p)!==-1&&selPrice.indexOf(i)===-1){selPrice.push(i);mark('priceList',i);}});
+function autoSelect() {
+    selectedCode = []; selectedDesc = []; selectedPrice = [];
+    var cp = ['code', 'item', 'sku', 'part', 'model'];
+    var dp = ['desc', 'name', 'spec'];
+    var pp = ['price', 'cost', 'rate', 'reseller', 'standard'];
+    allColumns.forEach(function(col, i) {
+        var l = col.toLowerCase();
+        cp.forEach(function(p) { if (l.includes(p) && selectedCode.indexOf(i) === -1) { selectedCode.push(i); markSel('code-list', i); } });
+        dp.forEach(function(p) { if (l.includes(p) && selectedDesc.indexOf(i) === -1) { selectedDesc.push(i); markSel('desc-list', i); } });
+        pp.forEach(function(p) { if (l.includes(p) && selectedPrice.indexOf(i) === -1) { selectedPrice.push(i); markSel('price-list', i); } });
     });
-    document.getElementById('codeLabel').textContent=selCode.length?selCode.length+' selected':'-- Select columns --';
-    document.getElementById('descLabel').textContent=selDesc.length?selDesc.length+' selected':'-- Select columns --';
-    document.getElementById('priceLabel').textContent=selPrice.length?selPrice.length+' selected':'-- Select columns --';
-}
-function mark(listId,i){var cb=document.querySelector('#'+listId+' input[data-i="'+i+'"]');if(cb){cb.checked=true;cb.parentElement.classList.add('checked');}}
-
-function calcEx(){var m=parseFloat(document.getElementById('markup').value)||45;document.getElementById('exCost').textContent='1000.00';document.getElementById('exSell').textContent=(1000*(1+m/100)).toFixed(2);}
-
-function reset(){
-    wb=null;allData=[];fileName='';cols=[];selCode=[];selDesc=[];selPrice=[];debugMessages=[];
-    document.getElementById('fileInput').value='';
-    document.getElementById('vendorName').value='';
-    document.getElementById('step1').classList.remove('hidden');
-    document.getElementById('step2').classList.add('hidden');
-    document.getElementById('step3').classList.add('hidden');
-    document.getElementById('status').classList.add('hidden');
-    document.getElementById('results').classList.add('hidden');
-    document.getElementById('debugLog').classList.add('hidden');
+    updateBtns();
 }
 
-function gv(row,names){for(var i=0;i<names.length;i++){var x=row.h.indexOf(names[i]);if(x!==-1&&row.d[x]!==undefined&&row.d[x]!=='')return row.d[x];}return '';}
-function gn(row,names){for(var i=0;i<names.length;i++){var x=row.h.indexOf(names[i]);if(x!==-1){var v=row.d[x];if(v!==undefined&&v!==''){var n=parseFloat(String(v).replace(/[^0-9.-]/g,''));if(!isNaN(n)&&n>0)return n;}}}return 0;}
-
-// Check if vendor exists, if not create it
-async function ensureVendor(vendorName){
-    if(!zoho)return true;
-    
-    try{
-        // Search for existing vendor
-        log('Checking if vendor exists: '+vendorName);
-        var searchConfig = {
-            appName: CONFIG.appName,
-            reportName: CONFIG.vendorsForm+"_Report",
-            criteria: CONFIG.vendorFields.name+" == \""+vendorName+"\""
-        };
-        
-        var result = await ZOHO.CREATOR.API.getRecords(searchConfig);
-        log('Vendor search result: '+JSON.stringify(result));
-        
-        if(result && result.data && result.data.length > 0){
-            log('Vendor already exists');
-            return true;
-        }
-        
-        // Create new vendor
-        log('Creating new vendor: '+vendorName);
-        var vendorData = {};
-        vendorData[CONFIG.vendorFields.name] = vendorName;
-        
-        var createResult = await ZOHO.CREATOR.API.addRecord({
-            appName: CONFIG.appName,
-            formName: CONFIG.vendorsForm,
-            data: {data: vendorData}
-        });
-        log('Vendor created: '+JSON.stringify(createResult));
-        return true;
-    }catch(e){
-        log('Vendor error: '+JSON.stringify(e));
-        return false;
-    }
+function markSel(listId, idx) {
+    var cb = document.querySelector('#' + listId + ' input[data-idx="' + idx + '"]');
+    if (cb) { cb.checked = true; cb.parentElement.classList.add('selected'); }
 }
 
-// Create price list record
-async function createPriceList(vendorName, productCount){
-    if(!zoho)return true;
-    
-    try{
-        log('Creating price list record...');
-        var data = {};
-        data[CONFIG.priceListFields.fileName] = fileName;
-        data[CONFIG.priceListFields.vendorName] = vendorName;
-        data[CONFIG.priceListFields.uploadDate] = new Date().toISOString().split('T')[0];
-        data[CONFIG.priceListFields.productCount] = productCount;
-        
-        var result = await ZOHO.CREATOR.API.addRecord({
-            appName: CONFIG.appName,
-            formName: CONFIG.priceListsForm,
-            data: {data: data}
-        });
-        log('Price list created: '+JSON.stringify(result));
-        return true;
-    }catch(e){
-        log('Price list error: '+JSON.stringify(e));
-        return false;
-    }
+function updateBtns() {
+    ['code', 'desc', 'price'].forEach(function(t) {
+        var arr = t === 'code' ? selectedCode : t === 'desc' ? selectedDesc : selectedPrice;
+        document.querySelector('#' + t + '-dropdown .dropdown-btn span').textContent = arr.length ? arr.length + ' selected' : '-- Select --';
+    });
 }
 
-// Create product record
-async function createProduct(code, desc, costPrice, sellingPrice, markup, vendorName){
-    if(!zoho){return true;}
-    
-    try{
-        var data = {};
-        data[CONFIG.productFields.code] = String(code);
-        data[CONFIG.productFields.description] = String(desc || '');
-        data[CONFIG.productFields.costPrice] = costPrice;
-        data[CONFIG.productFields.sellingPrice] = sellingPrice;
-        data[CONFIG.productFields.markup] = markup;
-        data[CONFIG.productFields.vendor] = vendorName;
-        
-        var result = await ZOHO.CREATOR.API.addRecord({
-            appName: CONFIG.appName,
-            formName: CONFIG.productsForm,
-            data: {data: data}
-        });
-        return true;
-    }catch(e){
-        log('Product error: '+JSON.stringify(e));
-        return false;
-    }
+function updateMarkupExample() {
+    var m = parseFloat(document.getElementById('markup-percent').value) || 45;
+    document.getElementById('selling-example').textContent = (1000 * (1 + m / 100)).toFixed(2);
 }
 
-async function doImport(){
-    var vn=document.getElementById('vendorName').value.trim();
-    var mk=parseFloat(document.getElementById('markup').value)||45;
-    if(!vn){alert('Enter vendor name');return;}
-    if(!selCode.length){alert('Select Product Code columns');return;}
-    if(!selPrice.length){alert('Select Price columns');return;}
+function resetUpload() {
+    workbook = null; allData = []; allColumns = []; fileName = '';
+    selectedCode = []; selectedDesc = []; selectedPrice = [];
+    document.getElementById('file-input').value = '';
+    document.getElementById('vendor-name').value = '';
+    document.getElementById('upload-step1').classList.remove('hidden');
+    document.getElementById('upload-step2').classList.add('hidden');
+    document.getElementById('upload-step3').classList.add('hidden');
+    document.getElementById('import-results').classList.add('hidden');
+}
+
+function gv(row, names) { for (var i = 0; i < names.length; i++) { var x = row.h.indexOf(names[i]); if (x !== -1 && row.d[x] !== undefined && row.d[x] !== '') return row.d[x]; } return ''; }
+function gn(row, names) { for (var i = 0; i < names.length; i++) { var x = row.h.indexOf(names[i]); if (x !== -1) { var v = row.d[x]; if (v !== undefined && v !== '') { var n = parseFloat(String(v).replace(/[^0-9.-]/g, '')); if (!isNaN(n) && n > 0) return n; } } } return 0; }
+
+async function startImport() {
+    var vn = document.getElementById('vendor-name').value.trim();
+    var mk = parseFloat(document.getElementById('markup-percent').value) || 45;
+    if (!vn) { alert('Enter vendor name'); return; }
+    if (!selectedCode.length) { alert('Select Product Code columns'); return; }
+    if (!selectedPrice.length) { alert('Select Price columns'); return; }
     
-    var cn=selCode.map(function(i){return cols[i];}),dn=selDesc.map(function(i){return cols[i];}),pn=selPrice.map(function(i){return cols[i];});
+    var cn = selectedCode.map(function(i) { return allColumns[i]; });
+    var dn = selectedDesc.map(function(i) { return allColumns[i]; });
+    var pn = selectedPrice.map(function(i) { return allColumns[i]; });
     
-    document.getElementById('step2').classList.add('hidden');
-    document.getElementById('step3').classList.remove('hidden');
-    debugMessages=[];
+    document.getElementById('upload-step2').classList.add('hidden');
+    document.getElementById('upload-step3').classList.remove('hidden');
     
-    var bar=document.getElementById('pbar'),txt=document.getElementById('ptxt');
-    var tot=allData.length,imp=0,skip=0;
+    var bar = document.getElementById('progress-bar');
+    var txt = document.getElementById('progress-text');
+    var total = allData.length, imp = 0, skip = 0;
     
-    // Step 1: Ensure vendor exists
-    txt.textContent='Checking/creating vendor...';
-    bar.style.width='5%';
+    txt.textContent = 'Checking vendor...';
+    bar.style.width = '5%';
     await ensureVendor(vn);
     
-    // Step 2: Create price list
-    txt.textContent='Creating price list record...';
-    bar.style.width='10%';
-    await createPriceList(vn, tot);
+    txt.textContent = 'Creating price list...';
+    bar.style.width = '10%';
+    await createPriceList(vn, total);
     
-    // Step 3: Import products
-    txt.textContent='Importing products: 0/'+tot;
-    
-    for(var i=0;i<tot;i++){
-        var r=allData[i],code=gv(r,cn),price=gn(r,pn),desc=dn.length?gv(r,dn):'';
-        if(!code||price===0){skip++;continue;}
-        
-        var sell=Math.round(price*(1+mk/100)*100)/100;
-        
-        var success = await createProduct(code, desc, price, sell, mk, vn);
-        if(success){imp++;}else{skip++;}
-        
-        if(i%10===0||i===tot-1){
-            bar.style.width=(10+90*(i+1)/tot)+'%';
-            txt.textContent='Importing: '+(i+1)+'/'+tot+' ('+imp+' added)';
+    for (var i = 0; i < total; i++) {
+        var r = allData[i];
+        var code = gv(r, cn), price = gn(r, pn), desc = dn.length ? gv(r, dn) : '';
+        if (!code || price === 0) { skip++; continue; }
+        var sell = Math.round(price * (1 + mk / 100) * 100) / 100;
+        var ok = await createProduct(code, desc, price, sell, mk, vn);
+        if (ok) imp++; else skip++;
+        if (i % 10 === 0 || i === total - 1) {
+            bar.style.width = (10 + 90 * (i + 1) / total) + '%';
+            txt.textContent = 'Importing: ' + (i + 1) + '/' + total;
         }
     }
     
-    log('Import complete: '+imp+' imported, '+skip+' skipped');
-    document.getElementById('title3').textContent='✓ Import Complete!';
-    document.getElementById('rImported').textContent=imp;
-    document.getElementById('rSkipped').textContent=skip;
-    document.getElementById('rVendor').textContent=vn;
-    document.getElementById('results').classList.remove('hidden');
-    bar.style.width='100%';
-    txt.textContent='Done!';
+    document.getElementById('import-title').textContent = '✓ Import Complete!';
+    document.getElementById('result-imported').textContent = imp;
+    document.getElementById('result-skipped').textContent = skip;
+    document.getElementById('result-vendor').textContent = vn;
+    document.getElementById('import-results').classList.remove('hidden');
+    bar.style.width = '100%';
+    txt.textContent = 'Done!';
+    cachedProducts = [];
+    loadDashboard();
 }
+
+// Vendors
+async function loadVendors() {
+    cachedVendors = await getRecordsWithFallback(CONFIG.reports.vendors);
+    if (!cachedVendors.length) {
+        document.getElementById('vendors-table').innerHTML = '<div class="empty-state"><i class="fas fa-building"></i><h3>No vendors</h3></div>';
+        return;
+    }
+    var html = '<table><thead><tr><th>Name</th><th>Email</th><th>Phone</th></tr></thead><tbody>';
+    cachedVendors.forEach(function(v) {
+        html += '<tr><td><strong>' + (v[CONFIG.fields.vendor.name] || '-') + '</strong></td>';
+        html += '<td>' + (v[CONFIG.fields.vendor.email] || '-') + '</td>';
+        html += '<td>' + (v[CONFIG.fields.vendor.phone] || '-') + '</td></tr>';
+    });
+    html += '</tbody></table>';
+    document.getElementById('vendors-table').innerHTML = html;
+}
+
+function showAddVendorModal() { document.getElementById('vendor-modal').classList.remove('hidden'); document.getElementById('vendor-modal').style.display = 'flex'; }
+function hideVendorModal() { document.getElementById('vendor-modal').classList.add('hidden'); document.getElementById('vendor-modal').style.display = 'none'; }
+
+async function addVendor() {
+    var name = document.getElementById('new-vendor-name').value.trim();
+    if (!name) { alert('Enter name'); return; }
+    var data = {};
+    data[CONFIG.fields.vendor.name] = name;
+    data[CONFIG.fields.vendor.email] = document.getElementById('new-vendor-email').value.trim();
+    data[CONFIG.fields.vendor.phone] = document.getElementById('new-vendor-phone').value.trim();
+    await addRecord(CONFIG.forms.vendors, data);
+    hideVendorModal();
+    document.getElementById('new-vendor-name').value = '';
+    document.getElementById('new-vendor-email').value = '';
+    document.getElementById('new-vendor-phone').value = '';
+    loadVendors();
+}
+
+// Price Lists
+async function loadPriceLists() {
+    cachedPriceLists = await getRecordsWithFallback(CONFIG.reports.priceLists);
+    if (!cachedPriceLists.length) {
+        document.getElementById('pricelists-table').innerHTML = '<div class="empty-state"><i class="fas fa-file-alt"></i><h3>No price lists</h3></div>';
+        return;
+    }
+    var html = '<table><thead><tr><th>File Name</th><th>Vendor</th><th>Products</th><th>Date</th></tr></thead><tbody>';
+    cachedPriceLists.forEach(function(l) {
+        html += '<tr><td><strong>' + (l[CONFIG.fields.priceList.file] || '-') + '</strong></td>';
+        html += '<td><span class="vendor-badge">' + (l[CONFIG.fields.priceList.vendor] || '-') + '</span></td>';
+        html += '<td>' + (l[CONFIG.fields.priceList.count] || '0') + '</td>';
+        html += '<td>' + (l[CONFIG.fields.priceList.date] || '-') + '</td></tr>';
+    });
+    html += '</tbody></table>';
+    document.getElementById('pricelists-table').innerHTML = html;
+}
+
+// API Helpers
+async function addRecord(formName, data) {
+    if (!zohoReady) return null;
+    try {
+        return await ZOHO.CREATOR.API.addRecord({ appName: CONFIG.appName, formName: formName, data: { data: data } });
+    } catch (e) { console.error('addRecord error:', e); return null; }
+}
+
+async function ensureVendor(name) {
+    if (!zohoReady) return true;
+    try {
+        var vendors = await getRecordsWithFallback(CONFIG.reports.vendors);
+        var exists = vendors.some(function(v) { return v[CONFIG.fields.vendor.name] === name; });
+        if (!exists) {
+            var data = {}; data[CONFIG.fields.vendor.name] = name;
+            await addRecord(CONFIG.forms.vendors, data);
+        }
+        return true;
+    } catch (e) { return false; }
+}
+
+async function createPriceList(vendor, count) {
+    if (!zohoReady) return true;
+    var data = {};
+    data[CONFIG.fields.priceList.file] = fileName;
+    data[CONFIG.fields.priceList.vendor] = vendor;
+    data[CONFIG.fields.priceList.date] = new Date().toISOString().split('T')[0];
+    data[CONFIG.fields.priceList.count] = count;
+    return await addRecord(CONFIG.forms.priceLists, data);
+}
+
+async function createProduct(code, desc, cost, sell, markup, vendor) {
+    if (!zohoReady) return true;
+    var data = {};
+    data[CONFIG.fields.product.code] = String(code);
+    data[CONFIG.fields.product.desc] = String(desc || '');
+    data[CONFIG.fields.product.cost] = cost;
+    data[CONFIG.fields.product.selling] = sell;
+    data[CONFIG.fields.product.markup] = markup;
+    data[CONFIG.fields.product.vendor] = vendor;
+    return await addRecord(CONFIG.forms.products, data);
+}
+
+function formatNum(n) { return (parseFloat(n) || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 </script>
 </body>
 </html>
