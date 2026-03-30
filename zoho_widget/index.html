@@ -350,22 +350,45 @@ var workbook = null, allData = [], allColumns = [], fileName = '';
 var selectedCode = [], selectedDesc = [], selectedPrice = [];
 var cachedProducts = [], cachedVendors = [], cachedPriceLists = [];
 
-// Initialize
-if (typeof ZOHO !== 'undefined' && ZOHO.CREATOR) {
-    ZOHO.CREATOR.init().then(function() {
+// Initialize - Wait for Zoho SDK
+function initZoho() {
+    if (typeof ZOHO !== 'undefined' && ZOHO.CREATOR && ZOHO.CREATOR.init) {
+        ZOHO.CREATOR.init().then(function() {
+            zohoReady = true;
+            console.log('Zoho SDK ready');
+            loadDashboard();
+        }).catch(function(e) {
+            console.error('Zoho init error:', e);
+            showError('dashboard-error', 'Zoho SDK failed to initialize: ' + JSON.stringify(e));
+            showDemoMode();
+        });
+    } else if (typeof ZOHO !== 'undefined' && ZOHO.CREATOR && ZOHO.CREATOR.API) {
+        // SDK already initialized (embedded mode)
         zohoReady = true;
-        console.log('Zoho SDK ready');
+        console.log('Zoho SDK already ready (embedded)');
         loadDashboard();
-    }).catch(function(e) {
-        console.error('Zoho init error:', e);
-        showError('dashboard-error', 'Zoho SDK failed to initialize: ' + JSON.stringify(e));
-    });
-} else {
-    console.log('Running outside Zoho - demo mode');
+    } else {
+        console.log('Running outside Zoho or SDK not loaded - demo mode');
+        showDemoMode();
+    }
+}
+
+function showDemoMode() {
     document.getElementById('stat-products').textContent = '0';
     document.getElementById('stat-vendors').textContent = '0';
     document.getElementById('stat-pricelists').textContent = '0';
+    document.getElementById('recent-products').innerHTML = '<div class="empty-state"><i class="fas fa-box-open"></i><h3>No products yet</h3><p>Upload a price list to get started</p></div>';
 }
+
+// Try to init after page load
+if (document.readyState === 'complete') {
+    initZoho();
+} else {
+    window.addEventListener('load', initZoho);
+}
+
+// Also try after a short delay (Zoho SDK may load async)
+setTimeout(initZoho, 1000);
 
 // Navigation
 document.querySelectorAll('.nav-item').forEach(function(item) {
