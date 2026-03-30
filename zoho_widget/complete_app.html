@@ -24,153 +24,133 @@
             --gray-700: #374151;
             --gray-800: #1f2937;
             --gray-900: #111827;
-            --sidebar-width: 220px;
+            --sidebar-width: 200px;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--gray-100); color: var(--gray-800); }
         
-        /* Layout */
         .app { display: flex; min-height: 100vh; }
         
-        /* Sidebar */
         .sidebar { width: var(--sidebar-width); background: var(--gray-900); color: white; padding: 20px 0; position: fixed; height: 100vh; overflow-y: auto; }
-        .sidebar-header { padding: 0 20px 20px; border-bottom: 1px solid var(--gray-700); }
-        .sidebar-title { font-size: 18px; font-weight: 700; color: var(--primary); }
-        .sidebar-subtitle { font-size: 11px; color: var(--gray-400); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
-        .sidebar-nav { padding: 16px 0; }
-        .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 20px; color: var(--gray-400); cursor: pointer; transition: all 0.2s; font-size: 14px; }
+        .sidebar-header { padding: 0 16px 20px; border-bottom: 1px solid var(--gray-700); }
+        .sidebar-title { font-size: 16px; font-weight: 700; color: var(--primary); }
+        .sidebar-subtitle { font-size: 10px; color: var(--gray-400); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+        .sidebar-nav { padding: 12px 0; }
+        .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: var(--gray-400); cursor: pointer; transition: all 0.2s; font-size: 13px; }
         .nav-item:hover { background: var(--gray-800); color: white; }
         .nav-item.active { background: var(--primary); color: white; }
-        .nav-item i { width: 20px; text-align: center; }
+        .nav-item i { width: 18px; text-align: center; }
         
-        /* Main Content */
-        .main { flex: 1; margin-left: var(--sidebar-width); padding: 24px; }
+        .main { flex: 1; margin-left: var(--sidebar-width); padding: 20px; }
         .page { display: none; }
         .page.active { display: block; }
-        .page-header { margin-bottom: 24px; }
-        .page-title { font-size: 24px; font-weight: 600; color: var(--gray-900); }
-        .page-subtitle { font-size: 14px; color: var(--gray-500); margin-top: 4px; }
+        .page-header { margin-bottom: 20px; }
+        .page-title { font-size: 22px; font-weight: 600; color: var(--gray-900); }
+        .page-subtitle { font-size: 13px; color: var(--gray-500); margin-top: 2px; }
         
-        /* Cards */
-        .card { background: white; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 20px; margin-bottom: 20px; }
-        .card-title { font-size: 14px; font-weight: 600; color: var(--gray-700); margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .card { background: white; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 16px; margin-bottom: 16px; }
+        .card-title { font-size: 12px; font-weight: 600; color: var(--gray-600); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
         
-        /* Stats Grid */
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
-        .stat-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .stat-value { font-size: 32px; font-weight: 700; color: var(--gray-900); }
-        .stat-label { font-size: 13px; color: var(--gray-500); margin-top: 4px; }
-        .stat-card.primary { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+        .stat-card { background: white; border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .stat-value { font-size: 28px; font-weight: 700; color: var(--gray-900); }
+        .stat-label { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+        .stat-card.primary { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); }
         .stat-card.primary .stat-value, .stat-card.primary .stat-label { color: white; }
         
-        /* Search Box */
-        .search-box { position: relative; margin-bottom: 20px; }
-        .search-box input { width: 100%; padding: 14px 20px 14px 48px; border: 2px solid var(--gray-200); border-radius: 10px; font-size: 15px; transition: border-color 0.2s; }
+        .search-box { position: relative; margin-bottom: 16px; }
+        .search-box input { width: 100%; padding: 12px 16px 12px 44px; border: 2px solid var(--gray-200); border-radius: 8px; font-size: 14px; }
         .search-box input:focus { outline: none; border-color: var(--primary); }
-        .search-box i { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); color: var(--gray-400); }
+        .search-box i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--gray-400); }
         
-        /* Table */
         .table-wrapper { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        th { text-align: left; padding: 12px 16px; background: var(--gray-50); color: var(--gray-600); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid var(--gray-200); }
-        td { padding: 14px 16px; border-bottom: 1px solid var(--gray-100); }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { text-align: left; padding: 10px 12px; background: var(--gray-50); color: var(--gray-600); font-weight: 600; font-size: 11px; text-transform: uppercase; border-bottom: 2px solid var(--gray-200); }
+        td { padding: 10px 12px; border-bottom: 1px solid var(--gray-100); }
         tr:hover { background: var(--gray-50); }
-        .vendor-badge { display: inline-block; padding: 4px 10px; background: var(--success); color: white; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase; }
+        .vendor-badge { display: inline-block; padding: 3px 8px; background: var(--success); color: white; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; }
         .price { font-weight: 600; color: var(--gray-900); }
         
-        /* Buttons */
-        .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; transition: all 0.2s; }
+        .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all 0.2s; }
         .btn-primary { background: var(--primary); color: white; }
         .btn-primary:hover { background: var(--primary-dark); }
         .btn-secondary { background: var(--gray-100); color: var(--gray-700); }
-        .btn-secondary:hover { background: var(--gray-200); }
         .btn-danger { background: var(--danger); color: white; }
-        .btn-danger:hover { background: #dc2626; }
-        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .btn-sm { padding: 5px 10px; font-size: 11px; }
         
-        /* Upload Area */
-        .upload-area { border: 2px dashed var(--gray-300); border-radius: 12px; padding: 40px; text-align: center; background: var(--gray-50); cursor: pointer; transition: all 0.2s; }
+        .upload-area { border: 2px dashed var(--gray-300); border-radius: 10px; padding: 32px; text-align: center; background: var(--gray-50); cursor: pointer; transition: all 0.2s; }
         .upload-area:hover { border-color: var(--primary); background: #eff6ff; }
-        .upload-area i { font-size: 40px; color: var(--gray-400); margin-bottom: 12px; }
-        .upload-area h3 { font-size: 16px; color: var(--gray-700); margin-bottom: 4px; }
-        .upload-area p { font-size: 13px; color: var(--gray-500); }
+        .upload-area i { font-size: 36px; color: var(--gray-400); margin-bottom: 10px; }
+        .upload-area h3 { font-size: 14px; color: var(--gray-700); margin-bottom: 4px; }
+        .upload-area p { font-size: 12px; color: var(--gray-500); }
         
-        /* Form Elements */
-        .form-group { margin-bottom: 16px; }
-        .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--gray-700); margin-bottom: 6px; }
-        .form-group input, .form-group select { width: 100%; padding: 10px 14px; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 14px; }
-        .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--gray-700); margin-bottom: 4px; }
+        .form-group input, .form-group select { width: 100%; padding: 8px 12px; border: 1px solid var(--gray-300); border-radius: 6px; font-size: 13px; }
+        .form-group input:focus { outline: none; border-color: var(--primary); }
         
-        /* Dropdown Multi-select */
         .dropdown { position: relative; }
-        .dropdown-btn { width: 100%; padding: 10px 14px; border: 1px solid var(--gray-300); border-radius: 8px; background: white; text-align: left; cursor: pointer; font-size: 14px; color: var(--gray-500); display: flex; justify-content: space-between; align-items: center; }
+        .dropdown-btn { width: 100%; padding: 8px 12px; border: 1px solid var(--gray-300); border-radius: 6px; background: white; text-align: left; cursor: pointer; font-size: 13px; color: var(--gray-500); display: flex; justify-content: space-between; align-items: center; }
         .dropdown-btn.has-value { color: var(--gray-800); }
-        .dropdown-list { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--gray-300); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 100; max-height: 200px; overflow-y: auto; display: none; }
+        .dropdown-list { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--gray-300); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 100; max-height: 180px; overflow-y: auto; display: none; }
         .dropdown-list.open { display: block; }
-        .dropdown-item { padding: 10px 14px; display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13px; }
+        .dropdown-item { padding: 8px 12px; display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; }
         .dropdown-item:hover { background: var(--gray-50); }
         .dropdown-item.selected { background: #eff6ff; }
-        .dropdown-item input { width: 16px; height: 16px; }
+        .dropdown-item input { width: 14px; height: 14px; }
         
-        /* Steps */
-        .steps { display: flex; justify-content: center; gap: 8px; margin-bottom: 24px; }
-        .step { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--gray-400); }
+        .steps { display: flex; justify-content: center; gap: 6px; margin-bottom: 20px; font-size: 13px; }
+        .step { display: flex; align-items: center; gap: 6px; color: var(--gray-400); }
         .step.active { color: var(--primary); font-weight: 600; }
         .step.done { color: var(--success); }
-        .step-num { width: 28px; height: 28px; border-radius: 50%; background: var(--gray-200); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 12px; }
+        .step-num { width: 24px; height: 24px; border-radius: 50%; background: var(--gray-200); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 11px; }
         .step.active .step-num { background: var(--primary); color: white; }
         .step.done .step-num { background: var(--success); color: white; }
         
-        /* Sheet Tags */
-        .sheet-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
-        .sheet-tag { padding: 4px 10px; background: var(--primary); color: white; border-radius: 4px; font-size: 11px; }
+        .sheet-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+        .sheet-tag { padding: 3px 8px; background: var(--primary); color: white; border-radius: 4px; font-size: 10px; }
         .sheet-tag.more { background: var(--gray-500); }
         
-        /* Markup Box */
-        .markup-box { background: #dcfce7; border: 1px solid #86efac; border-radius: 8px; padding: 16px; margin: 16px 0; }
-        .markup-example { background: white; border-radius: 6px; padding: 12px; text-align: center; margin-bottom: 12px; }
-        .markup-example .label { font-size: 12px; color: var(--gray-500); }
-        .markup-example .calc { font-size: 15px; margin-top: 4px; }
+        .markup-box { background: #dcfce7; border: 1px solid #86efac; border-radius: 6px; padding: 12px; margin: 12px 0; }
+        .markup-example { background: white; border-radius: 4px; padding: 10px; text-align: center; margin-bottom: 8px; }
+        .markup-example .label { font-size: 11px; color: var(--gray-500); }
+        .markup-example .calc { font-size: 14px; margin-top: 2px; }
         .markup-example .cost { color: var(--gray-600); }
         .markup-example .selling { color: var(--success); font-weight: 600; }
         
-        /* Progress */
-        .progress-bar { height: 8px; background: var(--gray-200); border-radius: 4px; overflow: hidden; }
-        .progress-bar .fill { height: 100%; background: var(--primary); border-radius: 4px; transition: width 0.3s; }
-        .progress-text { text-align: center; margin-top: 8px; font-size: 13px; color: var(--gray-500); }
+        .progress-bar { height: 6px; background: var(--gray-200); border-radius: 3px; overflow: hidden; }
+        .progress-bar .fill { height: 100%; background: var(--primary); border-radius: 3px; transition: width 0.3s; }
+        .progress-text { text-align: center; margin-top: 6px; font-size: 12px; color: var(--gray-500); }
         
-        /* Results */
-        .results-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 20px 0; }
-        .result-card { text-align: center; padding: 20px; background: var(--gray-50); border-radius: 8px; }
-        .result-card .num { font-size: 32px; font-weight: 700; color: var(--primary); }
-        .result-card .txt { font-size: 12px; color: var(--gray-500); margin-top: 4px; }
+        .results-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0; }
+        .result-card { text-align: center; padding: 16px; background: var(--gray-50); border-radius: 6px; }
+        .result-card .num { font-size: 28px; font-weight: 700; color: var(--primary); }
+        .result-card .txt { font-size: 11px; color: var(--gray-500); margin-top: 2px; }
         
-        /* Loading */
-        .loading { text-align: center; padding: 40px; color: var(--gray-500); }
-        .loading i { font-size: 24px; margin-bottom: 12px; animation: spin 1s linear infinite; }
+        .loading { text-align: center; padding: 32px; color: var(--gray-500); }
+        .loading i { font-size: 20px; margin-bottom: 8px; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
         
-        /* Empty State */
-        .empty-state { text-align: center; padding: 60px 20px; color: var(--gray-500); }
-        .empty-state i { font-size: 48px; margin-bottom: 16px; color: var(--gray-300); }
-        .empty-state h3 { font-size: 18px; color: var(--gray-700); margin-bottom: 8px; }
+        .empty-state { text-align: center; padding: 40px 16px; color: var(--gray-500); }
+        .empty-state i { font-size: 40px; margin-bottom: 12px; color: var(--gray-300); }
+        .empty-state h3 { font-size: 16px; color: var(--gray-700); margin-bottom: 6px; }
+        .empty-state p { font-size: 13px; }
         
-        /* Hidden */
+        .error-box { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 12px; border-radius: 6px; margin: 12px 0; font-size: 12px; }
+        
         .hidden { display: none !important; }
         
-        /* Responsive */
         @media (max-width: 768px) {
-            .sidebar { width: 60px; }
+            .sidebar { width: 50px; }
             .sidebar-title, .sidebar-subtitle, .nav-item span { display: none; }
-            .main { margin-left: 60px; }
-            .stats-grid { grid-template-columns: 1fr 1fr; }
+            .main { margin-left: 50px; padding: 12px; }
+            .stats-grid { grid-template-columns: 1fr; }
             .results-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
     <div class="app">
-        <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
                 <div class="sidebar-title">PRICE CHECK</div>
@@ -185,37 +165,26 @@
             </nav>
         </aside>
 
-        <!-- Main Content -->
         <main class="main">
-            <!-- Dashboard Page -->
+            <!-- Dashboard -->
             <div id="page-dashboard" class="page active">
                 <div class="page-header">
                     <h1 class="page-title">Dashboard</h1>
                     <p class="page-subtitle">Overview of your price data</p>
                 </div>
+                <div id="dashboard-error" class="error-box hidden"></div>
                 <div class="stats-grid">
-                    <div class="stat-card primary">
-                        <div class="stat-value" id="stat-products">-</div>
-                        <div class="stat-label">Total Products</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="stat-vendors">-</div>
-                        <div class="stat-label">Vendors</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="stat-pricelists">-</div>
-                        <div class="stat-label">Price Lists</div>
-                    </div>
+                    <div class="stat-card primary"><div class="stat-value" id="stat-products">0</div><div class="stat-label">Total Products</div></div>
+                    <div class="stat-card"><div class="stat-value" id="stat-vendors">0</div><div class="stat-label">Vendors</div></div>
+                    <div class="stat-card"><div class="stat-value" id="stat-pricelists">0</div><div class="stat-label">Price Lists</div></div>
                 </div>
                 <div class="card">
                     <div class="card-title">Recent Products</div>
-                    <div id="recent-products" class="table-wrapper">
-                        <div class="loading"><i class="fas fa-spinner"></i><p>Loading...</p></div>
-                    </div>
+                    <div id="recent-products"><div class="empty-state"><i class="fas fa-box-open"></i><h3>No products yet</h3><p>Upload a price list to get started</p></div></div>
                 </div>
             </div>
 
-            <!-- Search Page -->
+            <!-- Search -->
             <div id="page-search" class="page">
                 <div class="page-header">
                     <h1 class="page-title">Price Search</h1>
@@ -224,26 +193,19 @@
                 <div class="card">
                     <div class="search-box">
                         <i class="fas fa-search"></i>
-                        <input type="text" id="search-input" placeholder="Enter product code or description (e.g., DS-2CD2047G3)">
+                        <input type="text" id="search-input" placeholder="Enter product code or description...">
                     </div>
-                    <div id="search-results">
-                        <div class="empty-state">
-                            <i class="fas fa-search"></i>
-                            <h3>Search for products</h3>
-                            <p>Enter a product code or description above to find prices</p>
-                        </div>
-                    </div>
+                    <div id="search-results"><div class="empty-state"><i class="fas fa-search"></i><h3>Search for products</h3><p>Enter a product code or description above</p></div></div>
                 </div>
             </div>
 
-            <!-- Upload Page -->
+            <!-- Upload -->
             <div id="page-upload" class="page">
                 <div class="page-header">
                     <h1 class="page-title">Upload Price List</h1>
                     <p class="page-subtitle">Import ALL sheets from vendor price lists</p>
                 </div>
                 
-                <!-- Step 1: Upload -->
                 <div id="upload-step1" class="card">
                     <div class="steps">
                         <div class="step active"><span class="step-num">1</span>Upload</div>
@@ -258,139 +220,108 @@
                     </div>
                 </div>
                 
-                <!-- Step 2: Map Columns -->
                 <div id="upload-step2" class="card hidden">
                     <div class="steps">
                         <div class="step done"><span class="step-num"><i class="fas fa-check"></i></span>Upload</div>
                         <div class="step active"><span class="step-num">2</span>Map Columns</div>
                         <div class="step"><span class="step-num">3</span>Done</div>
                     </div>
-                    
-                    <div style="background:#eef2ff;border-radius:8px;padding:14px;margin-bottom:20px">
-                        <p style="font-size:13px;color:var(--gray-700)">Found <strong id="sheet-count" style="color:var(--primary)">0</strong> sheets in this file. Select ALL column names that contain product codes, descriptions, and prices.</p>
+                    <div style="background:#eef2ff;border-radius:6px;padding:12px;margin-bottom:16px">
+                        <p style="font-size:12px;color:var(--gray-700)">Found <strong id="sheet-count" style="color:var(--primary)">0</strong> sheets. Select column names for product codes, descriptions, and prices.</p>
                         <div class="sheet-tags" id="sheet-tags"></div>
                     </div>
-                    
                     <div class="form-group">
                         <label>Vendor Name *</label>
                         <input type="text" id="vendor-name" placeholder="Enter vendor name (e.g., HIKVISION SA)">
                     </div>
-                    
-                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px">
-                        <div class="form-group">
-                            <label>Product Code Columns *</label>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
+                        <div class="form-group" style="margin:0">
+                            <label>Product Code *</label>
                             <div class="dropdown" id="code-dropdown">
-                                <button type="button" class="dropdown-btn" onclick="toggleDropdown('code-dropdown')"><span>-- Select columns --</span><i class="fas fa-chevron-down"></i></button>
+                                <button type="button" class="dropdown-btn" onclick="toggleDropdown('code-dropdown')"><span>-- Select --</span><i class="fas fa-chevron-down" style="font-size:10px"></i></button>
                                 <div class="dropdown-list" id="code-list"></div>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label>Description Columns</label>
+                        <div class="form-group" style="margin:0">
+                            <label>Description</label>
                             <div class="dropdown" id="desc-dropdown">
-                                <button type="button" class="dropdown-btn" onclick="toggleDropdown('desc-dropdown')"><span>-- Select columns --</span><i class="fas fa-chevron-down"></i></button>
+                                <button type="button" class="dropdown-btn" onclick="toggleDropdown('desc-dropdown')"><span>-- Select --</span><i class="fas fa-chevron-down" style="font-size:10px"></i></button>
                                 <div class="dropdown-list" id="desc-list"></div>
                             </div>
                         </div>
-                        <div class="form-group">
-                            <label>Price Columns *</label>
+                        <div class="form-group" style="margin:0">
+                            <label>Price *</label>
                             <div class="dropdown" id="price-dropdown">
-                                <button type="button" class="dropdown-btn" onclick="toggleDropdown('price-dropdown')"><span>-- Select columns --</span><i class="fas fa-chevron-down"></i></button>
+                                <button type="button" class="dropdown-btn" onclick="toggleDropdown('price-dropdown')"><span>-- Select --</span><i class="fas fa-chevron-down" style="font-size:10px"></i></button>
                                 <div class="dropdown-list" id="price-list"></div>
                             </div>
                         </div>
                     </div>
-                    
                     <div class="markup-box">
                         <div class="markup-example">
                             <div class="label">Example Calculation:</div>
                             <div class="calc"><span class="cost">Cost: R 1000.00</span> → <span class="selling">Selling: R <span id="selling-example">1450.00</span></span></div>
                         </div>
-                        <div style="display:flex;align-items:center;gap:8px">
-                            <input type="number" id="markup-percent" value="45" min="0" max="500" style="width:70px;text-align:center" onchange="updateMarkupExample()">
-                            <span style="font-size:13px;color:#166534">% markup. Both cost price and selling price will be stored.</span>
+                        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#166534">
+                            <input type="number" id="markup-percent" value="45" min="0" max="500" style="width:60px;text-align:center;padding:6px" onchange="updateMarkupExample()">
+                            <span>% markup</span>
                         </div>
                     </div>
-                    
-                    <p style="font-size:12px;color:var(--gray-500);margin-bottom:20px">💡 Select multiple columns for product codes and prices. The system will try each one on every sheet.</p>
-                    
-                    <div style="display:flex;gap:12px">
+                    <div style="display:flex;gap:10px">
                         <button class="btn btn-secondary" onclick="resetUpload()"><i class="fas fa-arrow-left"></i>Back</button>
                         <button class="btn btn-primary" onclick="startImport()" style="flex:1"><i class="fas fa-download"></i>Import All Products</button>
                     </div>
                 </div>
                 
-                <!-- Step 3: Progress/Done -->
                 <div id="upload-step3" class="card hidden">
                     <div class="steps">
                         <div class="step done"><span class="step-num"><i class="fas fa-check"></i></span>Upload</div>
-                        <div class="step done"><span class="step-num"><i class="fas fa-check"></i></span>Map Columns</div>
+                        <div class="step done"><span class="step-num"><i class="fas fa-check"></i></span>Map</div>
                         <div class="step active"><span class="step-num">3</span>Done</div>
                     </div>
-                    
-                    <h2 id="import-title" style="text-align:center;margin-bottom:20px">Importing Products...</h2>
-                    
+                    <h2 id="import-title" style="text-align:center;margin-bottom:16px;font-size:18px">Importing...</h2>
                     <div class="progress-bar"><div class="fill" id="progress-bar" style="width:0%"></div></div>
                     <p class="progress-text" id="progress-text">Preparing...</p>
-                    
                     <div id="import-results" class="hidden">
                         <div class="results-grid">
-                            <div class="result-card"><div class="num" id="result-imported">0</div><div class="txt">Products Imported</div></div>
-                            <div class="result-card"><div class="num" id="result-skipped">0</div><div class="txt">Rows Skipped</div></div>
+                            <div class="result-card"><div class="num" id="result-imported">0</div><div class="txt">Imported</div></div>
+                            <div class="result-card"><div class="num" id="result-skipped">0</div><div class="txt">Skipped</div></div>
                             <div class="result-card"><div class="num" id="result-vendor">-</div><div class="txt">Vendor</div></div>
                         </div>
-                        <button class="btn btn-primary" onclick="resetUpload()" style="width:100%"><i class="fas fa-plus"></i>Upload Another File</button>
+                        <button class="btn btn-primary" onclick="resetUpload()" style="width:100%"><i class="fas fa-plus"></i>Upload Another</button>
                     </div>
                 </div>
             </div>
 
-            <!-- Vendors Page -->
+            <!-- Vendors -->
             <div id="page-vendors" class="page">
                 <div class="page-header" style="display:flex;justify-content:space-between;align-items:center">
-                    <div>
-                        <h1 class="page-title">Vendors</h1>
-                        <p class="page-subtitle">Manage your vendor list</p>
-                    </div>
+                    <div><h1 class="page-title">Vendors</h1><p class="page-subtitle">Manage your vendor list</p></div>
                     <button class="btn btn-primary" onclick="showAddVendorModal()"><i class="fas fa-plus"></i>Add Vendor</button>
                 </div>
                 <div class="card">
-                    <div id="vendors-table" class="table-wrapper">
-                        <div class="loading"><i class="fas fa-spinner"></i><p>Loading vendors...</p></div>
-                    </div>
+                    <div id="vendors-table"><div class="empty-state"><i class="fas fa-building"></i><h3>No vendors yet</h3><p>Add a vendor or upload a price list</p></div></div>
                 </div>
             </div>
 
-            <!-- Price Lists Page -->
+            <!-- Price Lists -->
             <div id="page-pricelists" class="page">
-                <div class="page-header">
-                    <h1 class="page-title">Price Lists</h1>
-                    <p class="page-subtitle">View uploaded price lists</p>
-                </div>
+                <div class="page-header"><h1 class="page-title">Price Lists</h1><p class="page-subtitle">View uploaded price lists</p></div>
                 <div class="card">
-                    <div id="pricelists-table" class="table-wrapper">
-                        <div class="loading"><i class="fas fa-spinner"></i><p>Loading price lists...</p></div>
-                    </div>
+                    <div id="pricelists-table"><div class="empty-state"><i class="fas fa-file-alt"></i><h3>No price lists yet</h3><p>Upload a price list to get started</p></div></div>
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- Add Vendor Modal -->
+    <!-- Vendor Modal -->
     <div id="vendor-modal" class="hidden" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000">
-        <div class="card" style="width:400px;max-width:90%">
-            <h2 style="margin-bottom:20px">Add New Vendor</h2>
-            <div class="form-group">
-                <label>Vendor Name *</label>
-                <input type="text" id="new-vendor-name" placeholder="Enter vendor name">
-            </div>
-            <div class="form-group">
-                <label>Contact Email</label>
-                <input type="email" id="new-vendor-email" placeholder="Enter email">
-            </div>
-            <div class="form-group">
-                <label>Contact Phone</label>
-                <input type="text" id="new-vendor-phone" placeholder="Enter phone">
-            </div>
-            <div style="display:flex;gap:12px;margin-top:20px">
+        <div class="card" style="width:360px;max-width:90%">
+            <h2 style="margin-bottom:16px;font-size:18px">Add New Vendor</h2>
+            <div class="form-group"><label>Vendor Name *</label><input type="text" id="new-vendor-name" placeholder="Enter vendor name"></div>
+            <div class="form-group"><label>Email</label><input type="email" id="new-vendor-email" placeholder="Enter email"></div>
+            <div class="form-group"><label>Phone</label><input type="text" id="new-vendor-phone" placeholder="Enter phone"></div>
+            <div style="display:flex;gap:10px;margin-top:16px">
                 <button class="btn btn-secondary" onclick="hideVendorModal()">Cancel</button>
                 <button class="btn btn-primary" onclick="addVendor()" style="flex:1">Add Vendor</button>
             </div>
@@ -398,53 +329,46 @@
     </div>
 
 <script>
-// ===========================================
-// CONFIGURATION - Your Zoho Creator App Info
-// ===========================================
+// CONFIG - Matching your Zoho Creator setup
 var CONFIG = {
     appName: "forbtech-pricelist-manager",
-    forms: {
-        vendors: "Vendors",
-        products: "Products",
-        priceLists: "Price_Lists"
-    },
+    forms: { vendors: "Vendors", products: "Products", priceLists: "Price_Lists" },
+    // Try multiple report name formats
     reports: {
-        vendors: "Vendors_Report",
-        products: "Products_Report",
-        priceLists: "All_Price_Lists"
+        vendors: ["Vendors_Report", "All_Vendors", "Vendors Report"],
+        products: ["Products_Report", "All_Products", "Products Report"],
+        priceLists: ["All_Price_Lists", "Price_Lists_Report", "All Price Lists"]
     },
     fields: {
         vendor: { name: "name", email: "contact_email", phone: "contact_phone" },
-        product: { code: "product_code", desc: "description", cost: "cost_price", selling: "selling_price", markup: "markup_percent", vendor: "vendor_name", category: "category" },
+        product: { code: "product_code", desc: "description", cost: "cost_price", selling: "selling_price", markup: "markup_percent", vendor: "vendor_name" },
         priceList: { file: "File_Name", vendor: "Vendor_Name", date: "Upload_Date", count: "Product_Count" }
     }
 };
 
 var zohoReady = false;
-var workbook = null;
-var allData = [];
-var allColumns = [];
-var fileName = '';
+var workbook = null, allData = [], allColumns = [], fileName = '';
 var selectedCode = [], selectedDesc = [], selectedPrice = [];
+var cachedProducts = [], cachedVendors = [], cachedPriceLists = [];
 
-// Initialize Zoho SDK
+// Initialize
 if (typeof ZOHO !== 'undefined' && ZOHO.CREATOR) {
     ZOHO.CREATOR.init().then(function() {
         zohoReady = true;
         console.log('Zoho SDK ready');
         loadDashboard();
     }).catch(function(e) {
-        console.error('Zoho SDK error:', e);
+        console.error('Zoho init error:', e);
+        showError('dashboard-error', 'Zoho SDK failed to initialize: ' + JSON.stringify(e));
     });
 } else {
-    console.log('Running outside Zoho');
-    // Demo mode - show sample data
-    setTimeout(loadDashboard, 500);
+    console.log('Running outside Zoho - demo mode');
+    document.getElementById('stat-products').textContent = '0';
+    document.getElementById('stat-vendors').textContent = '0';
+    document.getElementById('stat-pricelists').textContent = '0';
 }
 
-// ===========================================
-// NAVIGATION
-// ===========================================
+// Navigation
 document.querySelectorAll('.nav-item').forEach(function(item) {
     item.addEventListener('click', function() {
         var page = this.dataset.page;
@@ -452,156 +376,162 @@ document.querySelectorAll('.nav-item').forEach(function(item) {
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         this.classList.add('active');
         document.getElementById('page-' + page).classList.add('active');
-        
         if (page === 'dashboard') loadDashboard();
         else if (page === 'vendors') loadVendors();
         else if (page === 'pricelists') loadPriceLists();
     });
 });
 
-// ===========================================
-// DASHBOARD
-// ===========================================
+function showError(elementId, message) {
+    var el = document.getElementById(elementId);
+    if (el) { el.textContent = message; el.classList.remove('hidden'); }
+}
+
+// Try multiple report names
+async function getRecordsWithFallback(reportNames) {
+    if (!zohoReady) return [];
+    for (var i = 0; i < reportNames.length; i++) {
+        try {
+            var result = await ZOHO.CREATOR.API.getAllRecords({
+                appName: CONFIG.appName,
+                reportName: reportNames[i],
+                page: 1,
+                pageSize: 200
+            });
+            if (result && result.data) {
+                console.log('Found records using report:', reportNames[i]);
+                return result.data;
+            }
+        } catch (e) {
+            console.log('Report not found:', reportNames[i]);
+        }
+    }
+    return [];
+}
+
 async function loadDashboard() {
     try {
-        var products = await getRecords(CONFIG.reports.products);
-        var vendors = await getRecords(CONFIG.reports.vendors);
-        var priceLists = await getRecords(CONFIG.reports.priceLists);
+        cachedProducts = await getRecordsWithFallback(CONFIG.reports.products);
+        cachedVendors = await getRecordsWithFallback(CONFIG.reports.vendors);
+        cachedPriceLists = await getRecordsWithFallback(CONFIG.reports.priceLists);
         
-        document.getElementById('stat-products').textContent = products.length;
-        document.getElementById('stat-vendors').textContent = vendors.length;
-        document.getElementById('stat-pricelists').textContent = priceLists.length;
+        document.getElementById('stat-products').textContent = cachedProducts.length;
+        document.getElementById('stat-vendors').textContent = cachedVendors.length;
+        document.getElementById('stat-pricelists').textContent = cachedPriceLists.length;
         
-        // Recent products table
-        var html = '<table><thead><tr><th>Product Code</th><th>Description</th><th>Vendor</th><th>Price</th></tr></thead><tbody>';
-        products.slice(0, 10).forEach(function(p) {
-            html += '<tr><td><strong>' + (p[CONFIG.fields.product.code] || '-') + '</strong></td>';
-            html += '<td>' + (p[CONFIG.fields.product.desc] || '-') + '</td>';
-            html += '<td><span class="vendor-badge">' + (p[CONFIG.fields.product.vendor] || '-') + '</span></td>';
-            html += '<td class="price">R ' + formatNumber(p[CONFIG.fields.product.selling]) + '</td></tr>';
-        });
-        html += '</tbody></table>';
-        document.getElementById('recent-products').innerHTML = products.length ? html : '<div class="empty-state"><i class="fas fa-box-open"></i><h3>No products yet</h3><p>Upload a price list to get started</p></div>';
+        if (cachedProducts.length > 0) {
+            var html = '<table><thead><tr><th>Product Code</th><th>Description</th><th>Vendor</th><th>Price</th></tr></thead><tbody>';
+            cachedProducts.slice(0, 10).forEach(function(p) {
+                html += '<tr><td><strong>' + (p[CONFIG.fields.product.code] || '-') + '</strong></td>';
+                html += '<td>' + (p[CONFIG.fields.product.desc] || '-').substring(0, 40) + '</td>';
+                html += '<td><span class="vendor-badge">' + (p[CONFIG.fields.product.vendor] || '-') + '</span></td>';
+                html += '<td class="price">R ' + formatNum(p[CONFIG.fields.product.selling]) + '</td></tr>';
+            });
+            html += '</tbody></table>';
+            document.getElementById('recent-products').innerHTML = html;
+        }
     } catch (e) {
         console.error('Dashboard error:', e);
+        showError('dashboard-error', 'Error loading data: ' + e.message);
     }
 }
 
-// ===========================================
-// SEARCH
-// ===========================================
+// Search
 var searchTimeout;
 document.getElementById('search-input').addEventListener('input', function() {
     clearTimeout(searchTimeout);
-    var query = this.value.trim();
-    if (query.length < 2) {
-        document.getElementById('search-results').innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><h3>Search for products</h3><p>Enter a product code or description above</p></div>';
+    var q = this.value.trim().toLowerCase();
+    if (q.length < 2) {
+        document.getElementById('search-results').innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><h3>Search for products</h3><p>Enter at least 2 characters</p></div>';
         return;
     }
-    searchTimeout = setTimeout(function() { searchProducts(query); }, 300);
+    searchTimeout = setTimeout(function() { searchProducts(q); }, 300);
 });
 
-async function searchProducts(query) {
+async function searchProducts(q) {
     document.getElementById('search-results').innerHTML = '<div class="loading"><i class="fas fa-spinner"></i><p>Searching...</p></div>';
     
-    try {
-        var products = await getRecords(CONFIG.reports.products);
-        var q = query.toLowerCase();
-        var results = products.filter(function(p) {
-            var code = (p[CONFIG.fields.product.code] || '').toLowerCase();
-            var desc = (p[CONFIG.fields.product.desc] || '').toLowerCase();
-            return code.includes(q) || desc.includes(q);
-        });
-        
-        // Sort by price (cheapest first)
-        results.sort(function(a, b) {
-            return (parseFloat(a[CONFIG.fields.product.selling]) || 0) - (parseFloat(b[CONFIG.fields.product.selling]) || 0);
-        });
-        
-        if (!results.length) {
-            document.getElementById('search-results').innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><h3>No results found</h3><p>Try a different search term</p></div>';
-            return;
-        }
-        
-        var html = '<table><thead><tr><th>Product Code</th><th>Description</th><th>Vendor</th><th>Cost Price</th><th>Selling Price</th></tr></thead><tbody>';
-        results.forEach(function(p, i) {
-            var rowClass = i === 0 ? 'style="background:#dcfce7"' : '';
-            html += '<tr ' + rowClass + '><td><strong>' + (p[CONFIG.fields.product.code] || '-') + '</strong></td>';
-            html += '<td>' + (p[CONFIG.fields.product.desc] || '-') + '</td>';
-            html += '<td><span class="vendor-badge">' + (p[CONFIG.fields.product.vendor] || '-') + '</span></td>';
-            html += '<td>R ' + formatNumber(p[CONFIG.fields.product.cost]) + '</td>';
-            html += '<td class="price">R ' + formatNumber(p[CONFIG.fields.product.selling]) + '</td></tr>';
-        });
-        html += '</tbody></table>';
-        document.getElementById('search-results').innerHTML = '<p style="margin-bottom:12px;color:var(--gray-500)">Found ' + results.length + ' results (sorted by cheapest price)</p>' + html;
-    } catch (e) {
-        console.error('Search error:', e);
+    if (cachedProducts.length === 0) {
+        cachedProducts = await getRecordsWithFallback(CONFIG.reports.products);
     }
+    
+    var results = cachedProducts.filter(function(p) {
+        var code = (p[CONFIG.fields.product.code] || '').toLowerCase();
+        var desc = (p[CONFIG.fields.product.desc] || '').toLowerCase();
+        return code.includes(q) || desc.includes(q);
+    });
+    
+    results.sort(function(a, b) {
+        return (parseFloat(a[CONFIG.fields.product.selling]) || 0) - (parseFloat(b[CONFIG.fields.product.selling]) || 0);
+    });
+    
+    if (!results.length) {
+        document.getElementById('search-results').innerHTML = '<div class="empty-state"><i class="fas fa-search"></i><h3>No results</h3><p>Try a different search term</p></div>';
+        return;
+    }
+    
+    var html = '<p style="margin-bottom:10px;font-size:12px;color:var(--gray-500)">Found ' + results.length + ' results (cheapest first)</p>';
+    html += '<table><thead><tr><th>Product Code</th><th>Description</th><th>Vendor</th><th>Cost</th><th>Selling</th></tr></thead><tbody>';
+    results.forEach(function(p, i) {
+        var bg = i === 0 ? 'style="background:#dcfce7"' : '';
+        html += '<tr ' + bg + '><td><strong>' + (p[CONFIG.fields.product.code] || '-') + '</strong></td>';
+        html += '<td>' + (p[CONFIG.fields.product.desc] || '-').substring(0, 30) + '</td>';
+        html += '<td><span class="vendor-badge">' + (p[CONFIG.fields.product.vendor] || '-') + '</span></td>';
+        html += '<td>R ' + formatNum(p[CONFIG.fields.product.cost]) + '</td>';
+        html += '<td class="price">R ' + formatNum(p[CONFIG.fields.product.selling]) + '</td></tr>';
+    });
+    html += '</tbody></table>';
+    document.getElementById('search-results').innerHTML = html;
 }
 
-// ===========================================
-// UPLOAD / IMPORT
-// ===========================================
+// File Upload
 function handleFileUpload(input) {
     if (!input.files || !input.files[0]) return;
     var file = input.files[0];
     fileName = file.name;
-    
     var reader = new FileReader();
     reader.onload = function(e) {
         try {
             workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
             if (!workbook.SheetNames.length) { alert('No sheets found'); return; }
-            
-            allColumns = [];
-            allData = [];
-            var seen = {};
-            
+            allColumns = []; allData = []; var seen = {};
             workbook.SheetNames.forEach(function(sn) {
                 var sheet = workbook.Sheets[sn];
                 var json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-                var headerIdx = 0;
+                var hi = 0;
                 for (var i = 0; i < Math.min(15, json.length); i++) {
-                    var cnt = 0;
-                    for (var j = 0; j < (json[i] || []).length; j++) if (json[i][j] !== '') cnt++;
-                    if (cnt >= 3) { headerIdx = i; break; }
+                    var c = 0; for (var j = 0; j < (json[i] || []).length; j++) if (json[i][j] !== '') c++;
+                    if (c >= 3) { hi = i; break; }
                 }
-                var headers = json[headerIdx] || [];
-                headers.forEach(function(h) { if (h && !seen[h]) { seen[h] = 1; allColumns.push(h); } });
-                for (var k = headerIdx + 1; k < json.length; k++) {
-                    var row = json[k], hasData = false;
-                    for (var l = 0; l < row.length; l++) if (row[l] !== '') { hasData = true; break; }
-                    if (hasData) allData.push({ h: headers, d: row });
+                var hdr = json[hi] || [];
+                hdr.forEach(function(h) { if (h && !seen[h]) { seen[h] = 1; allColumns.push(h); } });
+                for (var k = hi + 1; k < json.length; k++) {
+                    var rw = json[k], has = false;
+                    for (var l = 0; l < rw.length; l++) if (rw[l] !== '') { has = true; break; }
+                    if (has) allData.push({ h: hdr, d: rw });
                 }
             });
-            
-            // Show step 2
             document.getElementById('upload-step1').classList.add('hidden');
             document.getElementById('upload-step2').classList.remove('hidden');
             document.getElementById('sheet-count').textContent = workbook.SheetNames.length;
-            
-            var tagsHtml = '';
-            workbook.SheetNames.slice(0, 8).forEach(function(n) { tagsHtml += '<span class="sheet-tag">' + n + '</span>'; });
-            if (workbook.SheetNames.length > 8) tagsHtml += '<span class="sheet-tag more">+' + (workbook.SheetNames.length - 8) + ' more</span>';
-            document.getElementById('sheet-tags').innerHTML = tagsHtml;
-            
+            var tags = '';
+            workbook.SheetNames.slice(0, 6).forEach(function(n) { tags += '<span class="sheet-tag">' + n + '</span>'; });
+            if (workbook.SheetNames.length > 6) tags += '<span class="sheet-tag more">+' + (workbook.SheetNames.length - 6) + '</span>';
+            document.getElementById('sheet-tags').innerHTML = tags;
             populateDropdowns();
-            autoSelectColumns();
-        } catch (err) {
-            alert('Error reading file: ' + err.message);
-        }
+            autoSelect();
+        } catch (err) { alert('Error: ' + err.message); }
     };
     reader.readAsArrayBuffer(file);
 }
 
 function populateDropdowns() {
     ['code-list', 'desc-list', 'price-list'].forEach(function(id) {
-        var el = document.getElementById(id);
-        el.innerHTML = '';
+        var el = document.getElementById(id); el.innerHTML = '';
         allColumns.forEach(function(col, i) {
             var div = document.createElement('div');
             div.className = 'dropdown-item';
-            div.innerHTML = '<input type="checkbox" data-idx="' + i + '" onchange="handleColumnSelect(this, \'' + id + '\')"><span>' + col + '</span>';
+            div.innerHTML = '<input type="checkbox" data-idx="' + i + '" onchange="handleColSelect(this,\'' + id + '\')"><span>' + col + '</span>';
             el.appendChild(div);
         });
     });
@@ -614,58 +544,48 @@ function toggleDropdown(id) {
 }
 
 document.addEventListener('click', function(e) {
-    if (!e.target.closest('.dropdown')) {
-        document.querySelectorAll('.dropdown-list').forEach(function(l) { l.classList.remove('open'); });
-    }
+    if (!e.target.closest('.dropdown')) document.querySelectorAll('.dropdown-list').forEach(function(l) { l.classList.remove('open'); });
 });
 
-function handleColumnSelect(cb, listId) {
+function handleColSelect(cb, listId) {
     var idx = parseInt(cb.dataset.idx);
     var arr = listId === 'code-list' ? selectedCode : listId === 'desc-list' ? selectedDesc : selectedPrice;
-    var btnId = listId.replace('-list', '-dropdown');
-    
     if (cb.checked && arr.indexOf(idx) === -1) arr.push(idx);
-    else if (!cb.checked) { var pos = arr.indexOf(idx); if (pos !== -1) arr.splice(pos, 1); }
-    
+    else if (!cb.checked) { var p = arr.indexOf(idx); if (p !== -1) arr.splice(p, 1); }
     cb.parentElement.classList.toggle('selected', cb.checked);
-    var btn = document.querySelector('#' + btnId + ' .dropdown-btn span');
-    btn.textContent = arr.length ? arr.length + ' selected' : '-- Select columns --';
-    btn.parentElement.classList.toggle('has-value', arr.length > 0);
+    var btn = document.querySelector('#' + listId.replace('-list', '-dropdown') + ' .dropdown-btn span');
+    btn.textContent = arr.length ? arr.length + ' selected' : '-- Select --';
 }
 
-function autoSelectColumns() {
+function autoSelect() {
     selectedCode = []; selectedDesc = []; selectedPrice = [];
-    var codeP = ['code', 'item', 'sku', 'part', 'model'];
-    var descP = ['desc', 'name', 'spec', 'title'];
-    var priceP = ['price', 'cost', 'rate', 'reseller', 'standard', 'amount'];
-    
+    var cp = ['code', 'item', 'sku', 'part', 'model'];
+    var dp = ['desc', 'name', 'spec'];
+    var pp = ['price', 'cost', 'rate', 'reseller', 'standard'];
     allColumns.forEach(function(col, i) {
-        var low = col.toLowerCase();
-        codeP.forEach(function(p) { if (low.includes(p) && selectedCode.indexOf(i) === -1) { selectedCode.push(i); markSelected('code-list', i); } });
-        descP.forEach(function(p) { if (low.includes(p) && selectedDesc.indexOf(i) === -1) { selectedDesc.push(i); markSelected('desc-list', i); } });
-        priceP.forEach(function(p) { if (low.includes(p) && selectedPrice.indexOf(i) === -1) { selectedPrice.push(i); markSelected('price-list', i); } });
+        var l = col.toLowerCase();
+        cp.forEach(function(p) { if (l.includes(p) && selectedCode.indexOf(i) === -1) { selectedCode.push(i); markSel('code-list', i); } });
+        dp.forEach(function(p) { if (l.includes(p) && selectedDesc.indexOf(i) === -1) { selectedDesc.push(i); markSel('desc-list', i); } });
+        pp.forEach(function(p) { if (l.includes(p) && selectedPrice.indexOf(i) === -1) { selectedPrice.push(i); markSel('price-list', i); } });
     });
-    
-    updateDropdownBtns();
+    updateBtns();
 }
 
-function markSelected(listId, idx) {
+function markSel(listId, idx) {
     var cb = document.querySelector('#' + listId + ' input[data-idx="' + idx + '"]');
     if (cb) { cb.checked = true; cb.parentElement.classList.add('selected'); }
 }
 
-function updateDropdownBtns() {
-    ['code', 'desc', 'price'].forEach(function(type) {
-        var arr = type === 'code' ? selectedCode : type === 'desc' ? selectedDesc : selectedPrice;
-        var btn = document.querySelector('#' + type + '-dropdown .dropdown-btn span');
-        btn.textContent = arr.length ? arr.length + ' selected' : '-- Select columns --';
-        btn.parentElement.classList.toggle('has-value', arr.length > 0);
+function updateBtns() {
+    ['code', 'desc', 'price'].forEach(function(t) {
+        var arr = t === 'code' ? selectedCode : t === 'desc' ? selectedDesc : selectedPrice;
+        document.querySelector('#' + t + '-dropdown .dropdown-btn span').textContent = arr.length ? arr.length + ' selected' : '-- Select --';
     });
 }
 
 function updateMarkupExample() {
-    var markup = parseFloat(document.getElementById('markup-percent').value) || 45;
-    document.getElementById('selling-example').textContent = (1000 * (1 + markup / 100)).toFixed(2);
+    var m = parseFloat(document.getElementById('markup-percent').value) || 45;
+    document.getElementById('selling-example').textContent = (1000 * (1 + m / 100)).toFixed(2);
 }
 
 function resetUpload() {
@@ -679,297 +599,156 @@ function resetUpload() {
     document.getElementById('import-results').classList.add('hidden');
 }
 
-function getVal(row, names) {
-    for (var i = 0; i < names.length; i++) {
-        var idx = row.h.indexOf(names[i]);
-        if (idx !== -1 && row.d[idx] !== undefined && row.d[idx] !== '') return row.d[idx];
-    }
-    return '';
-}
-
-function getNumVal(row, names) {
-    for (var i = 0; i < names.length; i++) {
-        var idx = row.h.indexOf(names[i]);
-        if (idx !== -1) {
-            var v = row.d[idx];
-            if (v !== undefined && v !== '') {
-                var n = parseFloat(String(v).replace(/[^0-9.-]/g, ''));
-                if (!isNaN(n) && n > 0) return n;
-            }
-        }
-    }
-    return 0;
-}
+function gv(row, names) { for (var i = 0; i < names.length; i++) { var x = row.h.indexOf(names[i]); if (x !== -1 && row.d[x] !== undefined && row.d[x] !== '') return row.d[x]; } return ''; }
+function gn(row, names) { for (var i = 0; i < names.length; i++) { var x = row.h.indexOf(names[i]); if (x !== -1) { var v = row.d[x]; if (v !== undefined && v !== '') { var n = parseFloat(String(v).replace(/[^0-9.-]/g, '')); if (!isNaN(n) && n > 0) return n; } } } return 0; }
 
 async function startImport() {
-    var vendorName = document.getElementById('vendor-name').value.trim();
-    var markup = parseFloat(document.getElementById('markup-percent').value) || 45;
-    
-    if (!vendorName) { alert('Enter vendor name'); return; }
+    var vn = document.getElementById('vendor-name').value.trim();
+    var mk = parseFloat(document.getElementById('markup-percent').value) || 45;
+    if (!vn) { alert('Enter vendor name'); return; }
     if (!selectedCode.length) { alert('Select Product Code columns'); return; }
     if (!selectedPrice.length) { alert('Select Price columns'); return; }
     
-    var codeNames = selectedCode.map(function(i) { return allColumns[i]; });
-    var descNames = selectedDesc.map(function(i) { return allColumns[i]; });
-    var priceNames = selectedPrice.map(function(i) { return allColumns[i]; });
+    var cn = selectedCode.map(function(i) { return allColumns[i]; });
+    var dn = selectedDesc.map(function(i) { return allColumns[i]; });
+    var pn = selectedPrice.map(function(i) { return allColumns[i]; });
     
     document.getElementById('upload-step2').classList.add('hidden');
     document.getElementById('upload-step3').classList.remove('hidden');
     
     var bar = document.getElementById('progress-bar');
     var txt = document.getElementById('progress-text');
-    var total = allData.length, imported = 0, skipped = 0;
+    var total = allData.length, imp = 0, skip = 0;
     
-    // Check/create vendor
     txt.textContent = 'Checking vendor...';
     bar.style.width = '5%';
-    await ensureVendor(vendorName);
+    await ensureVendor(vn);
     
-    // Create price list record
-    txt.textContent = 'Creating price list record...';
+    txt.textContent = 'Creating price list...';
     bar.style.width = '10%';
-    await createPriceList(vendorName, total);
+    await createPriceList(vn, total);
     
-    // Import products
     for (var i = 0; i < total; i++) {
-        var row = allData[i];
-        var code = getVal(row, codeNames);
-        var price = getNumVal(row, priceNames);
-        var desc = descNames.length ? getVal(row, descNames) : '';
-        
-        if (!code || price === 0) { skipped++; continue; }
-        
-        var selling = Math.round(price * (1 + markup / 100) * 100) / 100;
-        var success = await createProduct(code, desc, price, selling, markup, vendorName);
-        if (success) imported++; else skipped++;
-        
+        var r = allData[i];
+        var code = gv(r, cn), price = gn(r, pn), desc = dn.length ? gv(r, dn) : '';
+        if (!code || price === 0) { skip++; continue; }
+        var sell = Math.round(price * (1 + mk / 100) * 100) / 100;
+        var ok = await createProduct(code, desc, price, sell, mk, vn);
+        if (ok) imp++; else skip++;
         if (i % 10 === 0 || i === total - 1) {
             bar.style.width = (10 + 90 * (i + 1) / total) + '%';
-            txt.textContent = 'Importing: ' + (i + 1) + '/' + total + ' (' + imported + ' added)';
+            txt.textContent = 'Importing: ' + (i + 1) + '/' + total;
         }
     }
     
     document.getElementById('import-title').textContent = '✓ Import Complete!';
-    document.getElementById('result-imported').textContent = imported;
-    document.getElementById('result-skipped').textContent = skipped;
-    document.getElementById('result-vendor').textContent = vendorName;
+    document.getElementById('result-imported').textContent = imp;
+    document.getElementById('result-skipped').textContent = skip;
+    document.getElementById('result-vendor').textContent = vn;
     document.getElementById('import-results').classList.remove('hidden');
     bar.style.width = '100%';
     txt.textContent = 'Done!';
-    
-    // Refresh dashboard stats
+    cachedProducts = [];
     loadDashboard();
 }
 
-// ===========================================
-// VENDORS
-// ===========================================
+// Vendors
 async function loadVendors() {
-    try {
-        var vendors = await getRecords(CONFIG.reports.vendors);
-        
-        if (!vendors.length) {
-            document.getElementById('vendors-table').innerHTML = '<div class="empty-state"><i class="fas fa-building"></i><h3>No vendors yet</h3><p>Add a vendor or upload a price list</p></div>';
-            return;
-        }
-        
-        var html = '<table><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Actions</th></tr></thead><tbody>';
-        vendors.forEach(function(v) {
-            html += '<tr><td><strong>' + (v[CONFIG.fields.vendor.name] || '-') + '</strong></td>';
-            html += '<td>' + (v[CONFIG.fields.vendor.email] || '-') + '</td>';
-            html += '<td>' + (v[CONFIG.fields.vendor.phone] || '-') + '</td>';
-            html += '<td><button class="btn btn-sm btn-danger" onclick="deleteVendor(\'' + v.ID + '\')"><i class="fas fa-trash"></i></button></td></tr>';
-        });
-        html += '</tbody></table>';
-        document.getElementById('vendors-table').innerHTML = html;
-    } catch (e) {
-        console.error('Vendors error:', e);
+    cachedVendors = await getRecordsWithFallback(CONFIG.reports.vendors);
+    if (!cachedVendors.length) {
+        document.getElementById('vendors-table').innerHTML = '<div class="empty-state"><i class="fas fa-building"></i><h3>No vendors</h3></div>';
+        return;
     }
+    var html = '<table><thead><tr><th>Name</th><th>Email</th><th>Phone</th></tr></thead><tbody>';
+    cachedVendors.forEach(function(v) {
+        html += '<tr><td><strong>' + (v[CONFIG.fields.vendor.name] || '-') + '</strong></td>';
+        html += '<td>' + (v[CONFIG.fields.vendor.email] || '-') + '</td>';
+        html += '<td>' + (v[CONFIG.fields.vendor.phone] || '-') + '</td></tr>';
+    });
+    html += '</tbody></table>';
+    document.getElementById('vendors-table').innerHTML = html;
 }
 
-function showAddVendorModal() {
-    document.getElementById('vendor-modal').classList.remove('hidden');
-    document.getElementById('vendor-modal').style.display = 'flex';
-}
-
-function hideVendorModal() {
-    document.getElementById('vendor-modal').classList.add('hidden');
-    document.getElementById('vendor-modal').style.display = 'none';
-    document.getElementById('new-vendor-name').value = '';
-    document.getElementById('new-vendor-email').value = '';
-    document.getElementById('new-vendor-phone').value = '';
-}
+function showAddVendorModal() { document.getElementById('vendor-modal').classList.remove('hidden'); document.getElementById('vendor-modal').style.display = 'flex'; }
+function hideVendorModal() { document.getElementById('vendor-modal').classList.add('hidden'); document.getElementById('vendor-modal').style.display = 'none'; }
 
 async function addVendor() {
     var name = document.getElementById('new-vendor-name').value.trim();
-    if (!name) { alert('Enter vendor name'); return; }
-    
+    if (!name) { alert('Enter name'); return; }
     var data = {};
     data[CONFIG.fields.vendor.name] = name;
     data[CONFIG.fields.vendor.email] = document.getElementById('new-vendor-email').value.trim();
     data[CONFIG.fields.vendor.phone] = document.getElementById('new-vendor-phone').value.trim();
-    
-    try {
-        await addRecord(CONFIG.forms.vendors, data);
-        hideVendorModal();
-        loadVendors();
-    } catch (e) {
-        alert('Error adding vendor');
-    }
+    await addRecord(CONFIG.forms.vendors, data);
+    hideVendorModal();
+    document.getElementById('new-vendor-name').value = '';
+    document.getElementById('new-vendor-email').value = '';
+    document.getElementById('new-vendor-phone').value = '';
+    loadVendors();
 }
 
-async function deleteVendor(id) {
-    if (!confirm('Delete this vendor?')) return;
-    try {
-        await deleteRecord(CONFIG.forms.vendors, id);
-        loadVendors();
-    } catch (e) {
-        alert('Error deleting vendor');
-    }
-}
-
-// ===========================================
-// PRICE LISTS
-// ===========================================
+// Price Lists
 async function loadPriceLists() {
-    try {
-        var lists = await getRecords(CONFIG.reports.priceLists);
-        
-        if (!lists.length) {
-            document.getElementById('pricelists-table').innerHTML = '<div class="empty-state"><i class="fas fa-file-alt"></i><h3>No price lists yet</h3><p>Upload a price list to get started</p></div>';
-            return;
-        }
-        
-        var html = '<table><thead><tr><th>File Name</th><th>Vendor</th><th>Products</th><th>Upload Date</th><th>Actions</th></tr></thead><tbody>';
-        lists.forEach(function(l) {
-            html += '<tr><td><strong>' + (l[CONFIG.fields.priceList.file] || '-') + '</strong></td>';
-            html += '<td><span class="vendor-badge">' + (l[CONFIG.fields.priceList.vendor] || '-') + '</span></td>';
-            html += '<td>' + (l[CONFIG.fields.priceList.count] || '0') + '</td>';
-            html += '<td>' + (l[CONFIG.fields.priceList.date] || '-') + '</td>';
-            html += '<td><button class="btn btn-sm btn-danger" onclick="deletePriceList(\'' + l.ID + '\')"><i class="fas fa-trash"></i></button></td></tr>';
-        });
-        html += '</tbody></table>';
-        document.getElementById('pricelists-table').innerHTML = html;
-    } catch (e) {
-        console.error('Price lists error:', e);
+    cachedPriceLists = await getRecordsWithFallback(CONFIG.reports.priceLists);
+    if (!cachedPriceLists.length) {
+        document.getElementById('pricelists-table').innerHTML = '<div class="empty-state"><i class="fas fa-file-alt"></i><h3>No price lists</h3></div>';
+        return;
     }
+    var html = '<table><thead><tr><th>File Name</th><th>Vendor</th><th>Products</th><th>Date</th></tr></thead><tbody>';
+    cachedPriceLists.forEach(function(l) {
+        html += '<tr><td><strong>' + (l[CONFIG.fields.priceList.file] || '-') + '</strong></td>';
+        html += '<td><span class="vendor-badge">' + (l[CONFIG.fields.priceList.vendor] || '-') + '</span></td>';
+        html += '<td>' + (l[CONFIG.fields.priceList.count] || '0') + '</td>';
+        html += '<td>' + (l[CONFIG.fields.priceList.date] || '-') + '</td></tr>';
+    });
+    html += '</tbody></table>';
+    document.getElementById('pricelists-table').innerHTML = html;
 }
 
-async function deletePriceList(id) {
-    if (!confirm('Delete this price list?')) return;
-    try {
-        await deleteRecord(CONFIG.forms.priceLists, id);
-        loadPriceLists();
-    } catch (e) {
-        alert('Error deleting price list');
-    }
-}
-
-// ===========================================
-// ZOHO API HELPERS
-// ===========================================
-async function getRecords(reportName) {
-    if (!zohoReady) return [];
-    try {
-        var result = await ZOHO.CREATOR.API.getAllRecords({
-            appName: CONFIG.appName,
-            reportName: reportName,
-            page: 1,
-            pageSize: 200
-        });
-        return result.data || [];
-    } catch (e) {
-        console.error('getRecords error:', e);
-        return [];
-    }
-}
-
+// API Helpers
 async function addRecord(formName, data) {
     if (!zohoReady) return null;
     try {
-        return await ZOHO.CREATOR.API.addRecord({
-            appName: CONFIG.appName,
-            formName: formName,
-            data: { data: data }
-        });
-    } catch (e) {
-        console.error('addRecord error:', e);
-        return null;
-    }
+        return await ZOHO.CREATOR.API.addRecord({ appName: CONFIG.appName, formName: formName, data: { data: data } });
+    } catch (e) { console.error('addRecord error:', e); return null; }
 }
 
-async function deleteRecord(formName, id) {
-    if (!zohoReady) return null;
-    try {
-        return await ZOHO.CREATOR.API.deleteRecord({
-            appName: CONFIG.appName,
-            formName: formName,
-            criteria: "ID == " + id
-        });
-    } catch (e) {
-        console.error('deleteRecord error:', e);
-        return null;
-    }
-}
-
-async function ensureVendor(vendorName) {
+async function ensureVendor(name) {
     if (!zohoReady) return true;
     try {
-        var vendors = await getRecords(CONFIG.reports.vendors);
-        var exists = vendors.some(function(v) { return v[CONFIG.fields.vendor.name] === vendorName; });
+        var vendors = await getRecordsWithFallback(CONFIG.reports.vendors);
+        var exists = vendors.some(function(v) { return v[CONFIG.fields.vendor.name] === name; });
         if (!exists) {
-            var data = {};
-            data[CONFIG.fields.vendor.name] = vendorName;
+            var data = {}; data[CONFIG.fields.vendor.name] = name;
             await addRecord(CONFIG.forms.vendors, data);
         }
         return true;
-    } catch (e) {
-        console.error('ensureVendor error:', e);
-        return false;
-    }
+    } catch (e) { return false; }
 }
 
-async function createPriceList(vendorName, count) {
+async function createPriceList(vendor, count) {
     if (!zohoReady) return true;
-    try {
-        var data = {};
-        data[CONFIG.fields.priceList.file] = fileName;
-        data[CONFIG.fields.priceList.vendor] = vendorName;
-        data[CONFIG.fields.priceList.date] = new Date().toISOString().split('T')[0];
-        data[CONFIG.fields.priceList.count] = count;
-        await addRecord(CONFIG.forms.priceLists, data);
-        return true;
-    } catch (e) {
-        console.error('createPriceList error:', e);
-        return false;
-    }
+    var data = {};
+    data[CONFIG.fields.priceList.file] = fileName;
+    data[CONFIG.fields.priceList.vendor] = vendor;
+    data[CONFIG.fields.priceList.date] = new Date().toISOString().split('T')[0];
+    data[CONFIG.fields.priceList.count] = count;
+    return await addRecord(CONFIG.forms.priceLists, data);
 }
 
-async function createProduct(code, desc, cost, selling, markup, vendor) {
+async function createProduct(code, desc, cost, sell, markup, vendor) {
     if (!zohoReady) return true;
-    try {
-        var data = {};
-        data[CONFIG.fields.product.code] = String(code);
-        data[CONFIG.fields.product.desc] = String(desc || '');
-        data[CONFIG.fields.product.cost] = cost;
-        data[CONFIG.fields.product.selling] = selling;
-        data[CONFIG.fields.product.markup] = markup;
-        data[CONFIG.fields.product.vendor] = vendor;
-        await addRecord(CONFIG.forms.products, data);
-        return true;
-    } catch (e) {
-        console.error('createProduct error:', e);
-        return false;
-    }
+    var data = {};
+    data[CONFIG.fields.product.code] = String(code);
+    data[CONFIG.fields.product.desc] = String(desc || '');
+    data[CONFIG.fields.product.cost] = cost;
+    data[CONFIG.fields.product.selling] = sell;
+    data[CONFIG.fields.product.markup] = markup;
+    data[CONFIG.fields.product.vendor] = vendor;
+    return await addRecord(CONFIG.forms.products, data);
 }
 
-// ===========================================
-// UTILITIES
-// ===========================================
-function formatNumber(num) {
-    var n = parseFloat(num) || 0;
-    return n.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+function formatNum(n) { return (parseFloat(n) || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 </script>
 </body>
 </html>
