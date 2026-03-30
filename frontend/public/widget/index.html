@@ -83,12 +83,6 @@
         }
         
         /* Visible file input button */
-        .file-input-wrapper {
-            position: relative;
-            display: inline-block;
-            margin-top: 10px;
-        }
-        
         .file-input-btn {
             display: inline-block;
             padding: 14px 32px;
@@ -99,6 +93,7 @@
             font-weight: 500;
             cursor: pointer;
             transition: background 0.2s;
+            border: none;
         }
         
         .file-input-btn:hover {
@@ -106,13 +101,7 @@
         }
         
         #fileInput {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            opacity: 0;
-            cursor: pointer;
+            display: none;
         }
         
         /* Steps Indicator */
@@ -270,6 +259,7 @@
             background: #fef3c7;
             border-radius: 8px;
             margin-bottom: 24px;
+            flex-wrap: wrap;
         }
         
         .markup-section label {
@@ -441,7 +431,7 @@
         /* Summary */
         .summary-stats {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 16px;
             margin-bottom: 24px;
         }
@@ -454,15 +444,51 @@
         }
         
         .stat-value {
-            font-size: 28px;
+            font-size: 24px;
             font-weight: 700;
             color: #3b82f6;
+            word-break: break-all;
         }
         
         .stat-label {
             font-size: 13px;
             color: #666;
             margin-top: 4px;
+        }
+        
+        /* Loading indicator */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .status-message {
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .status-message.loading {
+            background: #e0f2fe;
+            color: #0369a1;
+            width: auto;
+            height: auto;
+            border: none;
+            animation: none;
+            display: block;
         }
     </style>
 </head>
@@ -491,15 +517,13 @@
             <div class="upload-area" id="uploadArea">
                 <div class="upload-icon">📁</div>
                 <div class="upload-text">Select your Excel file to upload</div>
-                <div class="upload-hint">Supports .xlsx, .xls files</div>
+                <div class="upload-hint">Supports .xlsx, .xls, .csv files</div>
                 
-                <div class="file-input-wrapper">
-                    <span class="file-input-btn">Choose Excel File</span>
-                    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
-                </div>
+                <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none;">
+                <button type="button" class="file-input-btn" id="chooseFileBtn">Choose Excel File</button>
             </div>
             
-            <div id="selectedFile" class="message info hidden" style="margin-top: 16px;"></div>
+            <div id="statusMessage" class="status-message hidden"></div>
         </div>
         
         <!-- Step 2: Map Columns -->
@@ -586,8 +610,8 @@
             </div>
             
             <div class="button-group">
-                <button class="btn btn-secondary" onclick="resetUpload()">Back</button>
-                <button class="btn btn-primary" onclick="startImport()" id="importBtn">Import Products</button>
+                <button class="btn btn-secondary" id="backBtn">Back</button>
+                <button class="btn btn-primary" id="importBtn">Import Products</button>
             </div>
         </div>
         
@@ -635,7 +659,7 @@
                 </div>
                 
                 <div class="button-group">
-                    <button class="btn btn-success" onclick="resetUpload()">Upload Another File</button>
+                    <button class="btn btn-success" id="uploadAnotherBtn">Upload Another File</button>
                 </div>
             </div>
         </div>
@@ -643,75 +667,161 @@
     
     <script>
         // Global variables
-        let workbook = null;
-        let currentSheetData = [];
-        let selectedSheets = [];
-        let fileName = '';
-        let allColumns = [];
+        var workbook = null;
+        var currentSheetData = [];
+        var selectedSheets = [];
+        var fileName = '';
+        var allColumns = [];
+        var zohoInitialized = false;
         
-        // Initialize Zoho SDK
-        if (typeof ZOHO !== 'undefined' && ZOHO.CREATOR) {
-            ZOHO.CREATOR.init()
-                .then(function() {
-                    console.log("Zoho Creator Widget SDK initialized");
-                })
-                .catch(function(error) {
-                    console.error("SDK initialization failed:", error);
-                });
+        // Wait for page to fully load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded, initializing...');
+            
+            // Initialize Zoho SDK
+            if (typeof ZOHO !== 'undefined' && ZOHO.CREATOR) {
+                ZOHO.CREATOR.init()
+                    .then(function() {
+                        console.log("Zoho Creator Widget SDK initialized");
+                        zohoInitialized = true;
+                    })
+                    .catch(function(error) {
+                        console.error("SDK initialization failed:", error);
+                    });
+            } else {
+                console.log("Running outside Zoho Creator");
+            }
+            
+            // Set up event listeners
+            setupEventListeners();
+        });
+        
+        function setupEventListeners() {
+            var fileInput = document.getElementById('fileInput');
+            var chooseFileBtn = document.getElementById('chooseFileBtn');
+            var uploadArea = document.getElementById('uploadArea');
+            var backBtn = document.getElementById('backBtn');
+            var importBtn = document.getElementById('importBtn');
+            var uploadAnotherBtn = document.getElementById('uploadAnotherBtn');
+            
+            // Choose file button click
+            chooseFileBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Choose file button clicked');
+                fileInput.click();
+            });
+            
+            // File input change
+            fileInput.addEventListener('change', function(e) {
+                console.log('File input changed');
+                var files = e.target.files;
+                if (files && files.length > 0) {
+                    var file = files[0];
+                    console.log('File selected:', file.name, 'Size:', file.size);
+                    showStatus('Reading file: ' + file.name + '...', 'loading');
+                    processFile(file);
+                }
+            });
+            
+            // Drag and drop
+            uploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                uploadArea.classList.add('dragover');
+            });
+            
+            uploadArea.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                uploadArea.classList.remove('dragover');
+            });
+            
+            uploadArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                uploadArea.classList.remove('dragover');
+                var files = e.dataTransfer.files;
+                if (files && files.length > 0) {
+                    showStatus('Reading file: ' + files[0].name + '...', 'loading');
+                    processFile(files[0]);
+                }
+            });
+            
+            // Back button
+            backBtn.addEventListener('click', function() {
+                resetUpload();
+            });
+            
+            // Import button
+            importBtn.addEventListener('click', function() {
+                startImport();
+            });
+            
+            // Upload another button
+            uploadAnotherBtn.addEventListener('click', function() {
+                resetUpload();
+            });
         }
         
-        // File input handler - using direct event listener
-        const fileInput = document.getElementById('fileInput');
-        
-        fileInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                document.getElementById('selectedFile').textContent = 'Selected: ' + file.name;
-                document.getElementById('selectedFile').classList.remove('hidden');
-                processFile(file);
+        function showStatus(message, type) {
+            var statusEl = document.getElementById('statusMessage');
+            statusEl.classList.remove('hidden', 'loading', 'success', 'error', 'info');
+            
+            if (type === 'loading') {
+                statusEl.innerHTML = '<span class="loading"></span>' + message;
+                statusEl.style.background = '#e0f2fe';
+                statusEl.style.color = '#0369a1';
+            } else if (type === 'success') {
+                statusEl.innerHTML = '✓ ' + message;
+                statusEl.style.background = '#d1fae5';
+                statusEl.style.color = '#065f46';
+            } else if (type === 'error') {
+                statusEl.innerHTML = '✗ ' + message;
+                statusEl.style.background = '#fee2e2';
+                statusEl.style.color = '#991b1b';
+            } else {
+                statusEl.innerHTML = message;
+                statusEl.style.background = '#dbeafe';
+                statusEl.style.color = '#1e40af';
             }
-        });
+        }
         
-        // Drag and drop handlers for upload area
-        const uploadArea = document.getElementById('uploadArea');
-        
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            uploadArea.classList.add('dragover');
-        });
-        
-        uploadArea.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            uploadArea.classList.remove('dragover');
-        });
-        
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            uploadArea.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
-            if (file) {
-                document.getElementById('selectedFile').textContent = 'Selected: ' + file.name;
-                document.getElementById('selectedFile').classList.remove('hidden');
-                processFile(file);
-            }
-        });
+        function hideStatus() {
+            document.getElementById('statusMessage').classList.add('hidden');
+        }
         
         // Process uploaded file
         function processFile(file) {
             fileName = file.name;
-            const reader = new FileReader();
+            console.log('Processing file:', fileName);
+            
+            var reader = new FileReader();
             
             reader.onload = function(e) {
+                console.log('FileReader onload triggered');
                 try {
-                    const data = new Uint8Array(e.target.result);
+                    var data = new Uint8Array(e.target.result);
+                    console.log('File data size:', data.length);
+                    
+                    // Check if XLSX is loaded
+                    if (typeof XLSX === 'undefined') {
+                        showStatus('Error: Excel parser not loaded. Please refresh the page.', 'error');
+                        return;
+                    }
+                    
                     workbook = XLSX.read(data, { type: 'array' });
+                    console.log('Workbook parsed, sheets:', workbook.SheetNames);
+                    
+                    if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+                        showStatus('Error: No sheets found in the file.', 'error');
+                        return;
+                    }
                     
                     // Show step 2
                     document.getElementById('step1').classList.add('hidden');
                     document.getElementById('step2').classList.remove('hidden');
+                    hideStatus();
                     
                     // Display file info
                     document.getElementById('fileInfo').textContent = 
@@ -721,12 +831,17 @@
                     createSheetTabs();
                     
                     // Select first sheet by default
-                    if (workbook.SheetNames.length > 0) {
-                        selectSheet(workbook.SheetNames[0]);
-                    }
+                    selectSheet(workbook.SheetNames[0]);
+                    
                 } catch (error) {
-                    alert('Error reading file: ' + error.message);
+                    console.error('Error parsing file:', error);
+                    showStatus('Error reading file: ' + error.message, 'error');
                 }
+            };
+            
+            reader.onerror = function(error) {
+                console.error('FileReader error:', error);
+                showStatus('Error reading file. Please try again.', 'error');
             };
             
             reader.readAsArrayBuffer(file);
@@ -734,29 +849,36 @@
         
         // Create sheet tabs
         function createSheetTabs() {
-            const tabsContainer = document.getElementById('sheetTabs');
+            var tabsContainer = document.getElementById('sheetTabs');
             tabsContainer.innerHTML = '';
             selectedSheets = [];
             
-            workbook.SheetNames.forEach((name, index) => {
-                const sheet = workbook.Sheets[name];
-                const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
-                const rowCount = range.e.r - range.s.r;
+            workbook.SheetNames.forEach(function(name) {
+                var sheet = workbook.Sheets[name];
+                var ref = sheet['!ref'] || 'A1';
+                var range = XLSX.utils.decode_range(ref);
+                var rowCount = Math.max(0, range.e.r - range.s.r);
                 
-                const tab = document.createElement('button');
+                var tab = document.createElement('button');
+                tab.type = 'button';
                 tab.className = 'sheet-tab';
                 tab.innerHTML = name + ' <span class="row-count">(' + rowCount + ' rows)</span>';
-                tab.onclick = function() { selectSheet(name); };
-                tab.dataset.sheet = name;
+                tab.setAttribute('data-sheet', name);
+                tab.addEventListener('click', function() {
+                    selectSheet(name);
+                });
                 tabsContainer.appendChild(tab);
             });
         }
         
         // Select sheet
         function selectSheet(sheetName) {
+            console.log('Selecting sheet:', sheetName);
+            
             // Update tab styles
-            document.querySelectorAll('.sheet-tab').forEach(function(tab) {
-                if (tab.dataset.sheet === sheetName) {
+            var tabs = document.querySelectorAll('.sheet-tab');
+            tabs.forEach(function(tab) {
+                if (tab.getAttribute('data-sheet') === sheetName) {
                     tab.classList.add('active');
                 } else {
                     tab.classList.remove('active');
@@ -767,24 +889,50 @@
             selectedSheets = [sheetName];
             
             // Parse sheet data
-            const sheet = workbook.Sheets[sheetName];
-            const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+            var sheet = workbook.Sheets[sheetName];
+            var jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+            
+            console.log('Sheet data rows:', jsonData.length);
             
             // Find header row (first row with multiple non-empty cells)
-            let headerRowIndex = 0;
-            for (let i = 0; i < Math.min(10, jsonData.length); i++) {
-                const nonEmptyCells = jsonData[i].filter(function(cell) { return cell !== ''; }).length;
+            var headerRowIndex = 0;
+            for (var i = 0; i < Math.min(15, jsonData.length); i++) {
+                var row = jsonData[i];
+                var nonEmptyCells = 0;
+                for (var j = 0; j < row.length; j++) {
+                    if (row[j] !== '' && row[j] !== null && row[j] !== undefined) {
+                        nonEmptyCells++;
+                    }
+                }
                 if (nonEmptyCells >= 3) {
                     headerRowIndex = i;
                     break;
                 }
             }
             
+            console.log('Header row index:', headerRowIndex);
+            
             // Extract columns
             allColumns = jsonData[headerRowIndex] || [];
-            currentSheetData = jsonData.slice(headerRowIndex + 1).filter(function(row) {
-                return row.some(function(cell) { return cell !== ''; });
-            });
+            
+            // Get data rows (skip empty rows)
+            currentSheetData = [];
+            for (var k = headerRowIndex + 1; k < jsonData.length; k++) {
+                var dataRow = jsonData[k];
+                var hasContent = false;
+                for (var l = 0; l < dataRow.length; l++) {
+                    if (dataRow[l] !== '' && dataRow[l] !== null && dataRow[l] !== undefined) {
+                        hasContent = true;
+                        break;
+                    }
+                }
+                if (hasContent) {
+                    currentSheetData.push(dataRow);
+                }
+            }
+            
+            console.log('Data rows:', currentSheetData.length);
+            console.log('Columns:', allColumns);
             
             // Populate column dropdowns
             populateColumnDropdowns();
@@ -798,17 +946,17 @@
         
         // Populate dropdowns
         function populateColumnDropdowns() {
-            var dropdowns = ['productCodeCol', 'descriptionCol', 'priceCol', 'categoryCol'];
+            var dropdownIds = ['productCodeCol', 'descriptionCol', 'priceCol', 'categoryCol'];
             
-            dropdowns.forEach(function(id) {
+            dropdownIds.forEach(function(id) {
                 var select = document.getElementById(id);
                 select.innerHTML = '<option value="">-- Select --</option>';
                 
                 allColumns.forEach(function(col, index) {
-                    if (col) {
+                    if (col !== '' && col !== null && col !== undefined) {
                         var option = document.createElement('option');
                         option.value = index;
-                        option.textContent = col.toString().substring(0, 40);
+                        option.textContent = String(col).substring(0, 50);
                         select.appendChild(option);
                     }
                 });
@@ -817,27 +965,43 @@
         
         // Auto-detect columns based on common names
         function autoDetectColumns() {
-            var codePatterns = ['code', 'item', 'sku', 'part', 'model', 'product code', 'item code'];
-            var descPatterns = ['desc', 'name', 'product', 'title', 'specification'];
-            var pricePatterns = ['price', 'cost', 'amount', 'value', 'rate', 'standard'];
-            var categoryPatterns = ['category', 'type', 'group', 'class'];
+            var codePatterns = ['code', 'item', 'sku', 'part', 'model', 'product code', 'item code', 'ef code'];
+            var descPatterns = ['desc', 'name', 'product', 'title', 'specification', 'model desc'];
+            var pricePatterns = ['price', 'cost', 'amount', 'value', 'rate', 'standard', 'reseller'];
+            var categoryPatterns = ['category', 'type', 'group', 'class', 'series'];
             
             allColumns.forEach(function(col, index) {
                 if (!col) return;
-                var colLower = col.toString().toLowerCase();
+                var colLower = String(col).toLowerCase();
                 
-                if (codePatterns.some(function(p) { return colLower.includes(p); }) && !document.getElementById('productCodeCol').value) {
-                    document.getElementById('productCodeCol').value = index;
-                }
-                if (descPatterns.some(function(p) { return colLower.includes(p); }) && !document.getElementById('descriptionCol').value) {
-                    document.getElementById('descriptionCol').value = index;
-                }
-                if (pricePatterns.some(function(p) { return colLower.includes(p); }) && !document.getElementById('priceCol').value) {
-                    document.getElementById('priceCol').value = index;
-                }
-                if (categoryPatterns.some(function(p) { return colLower.includes(p); }) && !document.getElementById('categoryCol').value) {
-                    document.getElementById('categoryCol').value = index;
-                }
+                var productCodeSelect = document.getElementById('productCodeCol');
+                var descSelect = document.getElementById('descriptionCol');
+                var priceSelect = document.getElementById('priceCol');
+                var categorySelect = document.getElementById('categoryCol');
+                
+                codePatterns.forEach(function(p) {
+                    if (colLower.indexOf(p) !== -1 && !productCodeSelect.value) {
+                        productCodeSelect.value = index;
+                    }
+                });
+                
+                descPatterns.forEach(function(p) {
+                    if (colLower.indexOf(p) !== -1 && !descSelect.value) {
+                        descSelect.value = index;
+                    }
+                });
+                
+                pricePatterns.forEach(function(p) {
+                    if (colLower.indexOf(p) !== -1 && !priceSelect.value) {
+                        priceSelect.value = index;
+                    }
+                });
+                
+                categoryPatterns.forEach(function(p) {
+                    if (colLower.indexOf(p) !== -1 && !categorySelect.value) {
+                        categorySelect.value = index;
+                    }
+                });
             });
         }
         
@@ -856,11 +1020,13 @@
             
             // Body (first 10 rows)
             var bodyHtml = '';
-            currentSheetData.slice(0, 10).forEach(function(row) {
+            var previewRows = currentSheetData.slice(0, 10);
+            previewRows.forEach(function(row) {
                 bodyHtml += '<tr>';
-                allColumns.forEach(function(_, i) {
-                    bodyHtml += '<td>' + (row[i] || '') + '</td>';
-                });
+                for (var i = 0; i < allColumns.length; i++) {
+                    var cellValue = row[i] !== undefined ? row[i] : '';
+                    bodyHtml += '<td>' + cellValue + '</td>';
+                }
                 bodyHtml += '</tr>';
             });
             tbody.innerHTML = bodyHtml;
@@ -872,17 +1038,25 @@
             currentSheetData = [];
             selectedSheets = [];
             fileName = '';
+            allColumns = [];
+            
             document.getElementById('fileInput').value = '';
-            document.getElementById('selectedFile').classList.add('hidden');
+            document.getElementById('vendorName').value = '';
+            document.getElementById('markupPercent').value = '45';
+            document.getElementById('productCodeCol').value = '';
+            document.getElementById('descriptionCol').value = '';
+            document.getElementById('priceCol').value = '';
+            document.getElementById('categoryCol').value = '';
             
             document.getElementById('step1').classList.remove('hidden');
             document.getElementById('step2').classList.add('hidden');
             document.getElementById('step3').classList.add('hidden');
             document.getElementById('importResults').classList.add('hidden');
+            hideStatus();
         }
         
         // Start import
-        async function startImport() {
+        function startImport() {
             var vendorName = document.getElementById('vendorName').value.trim();
             var productCodeColIdx = document.getElementById('productCodeCol').value;
             var priceColIdx = document.getElementById('priceCol').value;
@@ -895,14 +1069,20 @@
                 alert('Please enter a vendor name');
                 return;
             }
-            if (!productCodeColIdx) {
+            if (productCodeColIdx === '') {
                 alert('Please select a Product Code column');
                 return;
             }
-            if (!priceColIdx) {
+            if (priceColIdx === '') {
                 alert('Please select a Price column');
                 return;
             }
+            
+            // Convert to numbers
+            productCodeColIdx = parseInt(productCodeColIdx);
+            priceColIdx = parseInt(priceColIdx);
+            if (descColIdx !== '') descColIdx = parseInt(descColIdx);
+            if (categoryColIdx !== '') categoryColIdx = parseInt(categoryColIdx);
             
             // Show step 3
             document.getElementById('step2').classList.add('hidden');
@@ -911,11 +1091,16 @@
             var progressBar = document.getElementById('progressBar');
             var progressText = document.getElementById('progressText');
             
+            // Process import
+            processImport(vendorName, productCodeColIdx, priceColIdx, descColIdx, categoryColIdx, markupPercent, progressBar, progressText);
+        }
+        
+        async function processImport(vendorName, productCodeColIdx, priceColIdx, descColIdx, categoryColIdx, markupPercent, progressBar, progressText) {
             try {
-                // Create Price List record first
                 progressText.textContent = 'Creating price list record...';
                 progressBar.style.width = '10%';
                 
+                // Create Price List record
                 var priceListData = {
                     data: {
                         File_Name: fileName,
@@ -925,13 +1110,17 @@
                     }
                 };
                 
-                // Add to Price_Lists form
-                if (typeof ZOHO !== 'undefined' && ZOHO.CREATOR) {
-                    await ZOHO.CREATOR.API.addRecord({
-                        appName: "forbtech-pricelist-manager",
-                        formName: "Price_Lists",
-                        data: priceListData
-                    });
+                if (zohoInitialized && typeof ZOHO !== 'undefined' && ZOHO.CREATOR) {
+                    try {
+                        await ZOHO.CREATOR.API.addRecord({
+                            appName: "forbtech-pricelist-manager",
+                            formName: "Price_Lists",
+                            data: priceListData
+                        });
+                        console.log('Price list record created');
+                    } catch (err) {
+                        console.error('Error creating price list:', err);
+                    }
                 }
                 
                 // Process products
@@ -942,54 +1131,54 @@
                 progressText.textContent = 'Importing products: 0/' + totalProducts;
                 progressBar.style.width = '20%';
                 
-                // Batch products for efficiency
-                var batchSize = 10;
-                for (var i = 0; i < currentSheetData.length; i += batchSize) {
-                    var batch = currentSheetData.slice(i, i + batchSize);
+                for (var i = 0; i < currentSheetData.length; i++) {
+                    var row = currentSheetData[i];
+                    var productCode = row[productCodeColIdx];
+                    var priceValue = row[priceColIdx];
+                    var costPrice = parseFloat(String(priceValue).replace(/[^0-9.-]/g, '')) || 0;
                     
-                    for (var j = 0; j < batch.length; j++) {
-                        var row = batch[j];
-                        var productCode = row[productCodeColIdx];
-                        var costPrice = parseFloat(row[priceColIdx]) || 0;
-                        
-                        if (!productCode || costPrice === 0) {
-                            errors++;
-                            continue;
+                    if (!productCode || costPrice === 0) {
+                        errors++;
+                        continue;
+                    }
+                    
+                    var sellingPrice = costPrice * (1 + markupPercent / 100);
+                    
+                    var productData = {
+                        data: {
+                            product_code: String(productCode),
+                            description: descColIdx !== '' ? String(row[descColIdx] || '') : '',
+                            cost_price: costPrice,
+                            selling_price: Math.round(sellingPrice * 100) / 100,
+                            markup_percent: markupPercent,
+                            vendor_name: vendorName,
+                            category: categoryColIdx !== '' ? String(row[categoryColIdx] || '') : ''
                         }
-                        
-                        var sellingPrice = costPrice * (1 + markupPercent / 100);
-                        
-                        var productData = {
-                            data: {
-                                product_code: productCode.toString(),
-                                description: descColIdx ? (row[descColIdx] || '').toString() : '',
-                                cost_price: costPrice,
-                                selling_price: Math.round(sellingPrice * 100) / 100,
-                                markup_percent: markupPercent,
-                                vendor_name: vendorName,
-                                category: categoryColIdx ? (row[categoryColIdx] || '').toString() : ''
-                            }
-                        };
-                        
+                    };
+                    
+                    if (zohoInitialized && typeof ZOHO !== 'undefined' && ZOHO.CREATOR) {
                         try {
-                            if (typeof ZOHO !== 'undefined' && ZOHO.CREATOR) {
-                                await ZOHO.CREATOR.API.addRecord({
-                                    appName: "forbtech-pricelist-manager",
-                                    formName: "Products",
-                                    data: productData
-                                });
-                            }
+                            await ZOHO.CREATOR.API.addRecord({
+                                appName: "forbtech-pricelist-manager",
+                                formName: "Products",
+                                data: productData
+                            });
                             imported++;
                         } catch (err) {
                             console.error('Error adding product:', err);
                             errors++;
                         }
+                    } else {
+                        // Simulate import for testing outside Zoho
+                        imported++;
                     }
                     
-                    // Update progress
-                    var progress = 20 + ((i + batch.length) / totalProducts * 80);
-                    progressBar.style.width = progress + '%';
-                    progressText.textContent = 'Importing products: ' + imported + '/' + totalProducts;
+                    // Update progress every 10 items
+                    if (i % 10 === 0 || i === currentSheetData.length - 1) {
+                        var progress = 20 + ((i + 1) / totalProducts * 80);
+                        progressBar.style.width = progress + '%';
+                        progressText.textContent = 'Importing products: ' + imported + '/' + totalProducts;
+                    }
                 }
                 
                 // Show results
@@ -998,7 +1187,7 @@
                     errors > 0 ? imported + ' products imported, ' + errors + ' skipped' : 'All products imported successfully';
                 
                 document.getElementById('totalProducts').textContent = imported;
-                document.getElementById('priceListName').textContent = fileName.substring(0, 20);
+                document.getElementById('priceListName').textContent = fileName.length > 20 ? fileName.substring(0, 17) + '...' : fileName;
                 document.getElementById('vendorDisplay').textContent = vendorName;
                 
                 document.getElementById('importResults').classList.remove('hidden');
@@ -1010,6 +1199,7 @@
                 document.getElementById('importTitle').textContent = 'Import Error';
                 document.getElementById('importSubtitle').textContent = error.message || 'An error occurred during import';
                 progressBar.style.background = '#ef4444';
+                document.getElementById('importResults').classList.remove('hidden');
             }
         }
     </script>
