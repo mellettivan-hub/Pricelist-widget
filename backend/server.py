@@ -75,8 +75,29 @@ class UploadWithMappingMulti(BaseModel):
     mapping: ColumnMappingMulti
 
 
-# Temporary storage for uploaded files awaiting column mapping
-temp_files: Dict[str, bytes] = {}
+# Use MongoDB for temporary file storage instead of memory
+async def store_temp_file(file_id: str, content: bytes, filename: str):
+    """Store file temporarily in MongoDB"""
+    import base64
+    await db.temp_files.delete_many({"file_id": file_id})  # Clean any existing
+    await db.temp_files.insert_one({
+        "file_id": file_id,
+        "content": base64.b64encode(content).decode('utf-8'),
+        "filename": filename,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+
+async def get_temp_file(file_id: str) -> Optional[bytes]:
+    """Retrieve temporary file from MongoDB"""
+    import base64
+    doc = await db.temp_files.find_one({"file_id": file_id})
+    if doc:
+        return base64.b64decode(doc["content"])
+    return None
+
+async def delete_temp_file(file_id: str):
+    """Delete temporary file from MongoDB"""
+    await db.temp_files.delete_one({"file_id": file_id})
 
 
 def normalize_product_code(code: str) -> str:
@@ -225,8 +246,8 @@ async def preview_excel(file: UploadFile = File(...)):
     content = await file.read()
     file_id = str(uuid.uuid4())
     
-    # Store file temporarily
-    temp_files[file_id] = content
+    # Store file in MongoDB (persistent)
+    await store_temp_file(file_id, content, file.filename)
     
     try:
         xl = pd.ExcelFile(io.BytesIO(content))
@@ -297,10 +318,11 @@ async def upload_with_mapping(data: UploadWithMapping):
     """Process upload with user-specified column mapping - imports from ALL sheets"""
     file_id = data.file_id
     
-    if file_id not in temp_files:
+    # Get file from MongoDB
+    content = await get_temp_file(file_id)
+    if not content:
         raise HTTPException(status_code=400, detail="File not found. Please upload again.")
     
-    content = temp_files[file_id]
     price_list_id = str(uuid.uuid4())
     
     try:
@@ -445,7 +467,7 @@ async def upload_with_mapping(data: UploadWithMapping):
         await db.price_history.insert_many(history_records)
         
         # Clean up temp file
-        del temp_files[file_id]
+        await delete_temp_file(file_id)
         
         return {
             "message": "Price list uploaded successfully",
@@ -468,10 +490,11 @@ async def upload_with_mapping_multi(data: UploadWithMappingMulti):
     """Process upload with multiple column selections - imports from ALL sheets"""
     file_id = data.file_id
     
-    if file_id not in temp_files:
+    # Get file from MongoDB
+    content = await get_temp_file(file_id)
+    if not content:
         raise HTTPException(status_code=400, detail="File not found. Please upload again.")
     
-    content = temp_files[file_id]
     price_list_id = str(uuid.uuid4())
     
     try:
@@ -628,8 +651,8 @@ async def upload_with_mapping_multi(data: UploadWithMappingMulti):
         } for p in products]
         await db.price_history.insert_many(history_records)
         
-        # Clean up temp file
-        del temp_files[file_id]
+        # Clean up temp file from MongoDB
+        await delete_temp_file(file_id)
         
         return {
             "message": "Price list uploaded successfully",
