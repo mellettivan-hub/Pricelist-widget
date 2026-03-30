@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<!-- saved from url=(0069)https://price-compare-273.preview.emergentagent.com/widget/index.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Price List Uploader</title>
+    
+    <!-- SheetJS for Excel parsing -->
+    <script src="./Price List Uploader_files/xlsx.full.min.js.download"></script>
+    
+    <!-- Zoho Creator Widget SDK -->
+    <script src="./Price List Uploader_files/widgetsdk-min.js.download"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            font-size: 24px;
+            color: #1a1a2e;
+            margin-bottom: 8px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        
+        /* Upload Area */
+        .upload-area {
+            border: 2px dashed #d0d5dd;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #fafbfc;
+        }
+        
+        .upload-area:hover {
+            border-color: #3b82f6;
+            background: #f0f7ff;
+        }
+        
+        .upload-area.dragover {
+            border-color: #3b82f6;
+            background: #e8f2ff;
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        
+        .upload-text {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .upload-hint {
+            font-size: 13px;
+            color: #888;
+        }
+        
+        #fileInput {
+            display: none;
+        }
+        
+        /* Steps Indicator */
+        .steps {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 24px;
+            gap: 8px;
+        }
+        
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: #f0f0f0;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .step.active {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .step.completed {
+            background: #10b981;
+            color: white;
+        }
+        
+        .step-number {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+        
+        /* Sheet Tabs */
+        .sheet-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .sheet-tab {
+            padding: 8px 16px;
+            background: #e8e8e8;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        
+        .sheet-tab:hover {
+            background: #d0d0d0;
+        }
+        
+        .sheet-tab.active {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .sheet-tab .row-count {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-left: 4px;
+        }
+        
+        /* Column Mapping */
+        .mapping-section {
+            margin-bottom: 24px;
+        }
+        
+        .mapping-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #1a1a2e;
+        }
+        
+        .mapping-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+        }
+        
+        .mapping-item {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .mapping-item label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #444;
+        }
+        
+        .mapping-item label .required {
+            color: #ef4444;
+        }
+        
+        .mapping-item select {
+            padding: 10px 12px;
+            border: 1px solid #d0d5dd;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+        
+        .mapping-item select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        /* Vendor Selection */
+        .vendor-section {
+            margin-bottom: 24px;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+        
+        .vendor-section label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+        
+        .vendor-section input,
+        .vendor-section select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d0d5dd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        /* Markup Section */
+        .markup-section {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            background: #fef3c7;
+            border-radius: 8px;
+            margin-bottom: 24px;
+        }
+        
+        .markup-section label {
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .markup-section input {
+            width: 80px;
+            padding: 8px 12px;
+            border: 1px solid #d0d5dd;
+            border-radius: 8px;
+            font-size: 14px;
+            text-align: center;
+        }
+        
+        .markup-info {
+            font-size: 13px;
+            color: #666;
+        }
+        
+        /* Preview Table */
+        .preview-section {
+            margin-bottom: 24px;
+        }
+        
+        .preview-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #666;
+        }
+        
+        .preview-table-wrapper {
+            max-height: 300px;
+            overflow: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
+        
+        .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        
+        .preview-table th {
+            background: #f8fafc;
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 1px solid #e5e7eb;
+            position: sticky;
+            top: 0;
+        }
+        
+        .preview-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .preview-table tr:hover {
+            background: #f8fafc;
+        }
+        
+        /* Buttons */
+        .button-group {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+        
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #333;
+        }
+        
+        .btn-secondary:hover {
+            background: #d1d5db;
+        }
+        
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+        
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #059669;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* Progress */
+        .progress-section {
+            margin-bottom: 24px;
+        }
+        
+        .progress-bar-wrapper {
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: #3b82f6;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        .progress-text {
+            font-size: 13px;
+            color: #666;
+            text-align: center;
+        }
+        
+        /* Messages */
+        .message {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+        
+        .message.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .message.error {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .message.info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        /* Hidden */
+        .hidden {
+            display: none !important;
+        }
+        
+        /* Summary */
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .stat-card {
+            text-align: center;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+        
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #3b82f6;
+        }
+        
+        .stat-label {
+            font-size: 13px;
+            color: #666;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Step 1: Upload -->
+        <div id="step1" class="card">
+            <div class="steps">
+                <div class="step active">
+                    <span class="step-number">1</span>
+                    <span>Upload</span>
+                </div>
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <span>Map Columns</span>
+                </div>
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <span>Import</span>
+                </div>
+            </div>
+            
+            <h1>Upload Price List</h1>
+            <p class="subtitle">Upload your vendor Excel file to import products</p>
+            
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">Drop your Excel file here or click to browse</div>
+                <div class="upload-hint">Supports .xlsx, .xls files</div>
+                <input type="file" id="fileInput" accept=".xlsx,.xls">
+            </div>
+        </div>
+        
+        <!-- Step 2: Map Columns -->
+        <div id="step2" class="card hidden">
+            <div class="steps">
+                <div class="step completed">
+                    <span class="step-number">✓</span>
+                    <span>Upload</span>
+                </div>
+                <div class="step active">
+                    <span class="step-number">2</span>
+                    <span>Map Columns</span>
+                </div>
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <span>Import</span>
+                </div>
+            </div>
+            
+            <h1>Map Your Columns</h1>
+            <p class="subtitle">Select which columns contain your product data</p>
+            
+            <div id="fileInfo" class="message info"></div>
+            
+            <!-- Sheet Selection -->
+            <div class="mapping-section">
+                <div class="mapping-title">Select Sheets to Import</div>
+                <div class="sheet-tabs" id="sheetTabs"></div>
+            </div>
+            
+            <!-- Vendor Selection -->
+            <div class="vendor-section">
+                <label for="vendorName">Vendor Name <span class="required">*</span></label>
+                <input type="text" id="vendorName" placeholder="Enter vendor name (e.g., HIKVISION SA)">
+            </div>
+            
+            <!-- Markup -->
+            <div class="markup-section">
+                <label for="markupPercent">Markup Percentage:</label>
+                <input type="number" id="markupPercent" value="45" min="0" max="500">
+                <span class="markup-info">% (Cost Price × 1.45 = Selling Price)</span>
+            </div>
+            
+            <!-- Column Mapping -->
+            <div class="mapping-section">
+                <div class="mapping-title">Map Columns</div>
+                <div class="mapping-grid">
+                    <div class="mapping-item">
+                        <label>Product Code Column <span class="required">*</span></label>
+                        <select id="productCodeCol">
+                            <option value="">-- Select --</option>
+                        </select>
+                    </div>
+                    <div class="mapping-item">
+                        <label>Description Column</label>
+                        <select id="descriptionCol">
+                            <option value="">-- Select --</option>
+                        </select>
+                    </div>
+                    <div class="mapping-item">
+                        <label>Price Column <span class="required">*</span></label>
+                        <select id="priceCol">
+                            <option value="">-- Select --</option>
+                        </select>
+                    </div>
+                    <div class="mapping-item">
+                        <label>Category Column</label>
+                        <select id="categoryCol">
+                            <option value="">-- Select --</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Preview -->
+            <div class="preview-section">
+                <div class="preview-title">Data Preview (First 10 rows)</div>
+                <div class="preview-table-wrapper">
+                    <table class="preview-table" id="previewTable">
+                        <thead id="previewHead"></thead>
+                        <tbody id="previewBody"></tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button class="btn btn-secondary" onclick="resetUpload()">Back</button>
+                <button class="btn btn-primary" onclick="startImport()" id="importBtn">Import Products</button>
+            </div>
+        </div>
+        
+        <!-- Step 3: Import Progress -->
+        <div id="step3" class="card hidden">
+            <div class="steps">
+                <div class="step completed">
+                    <span class="step-number">✓</span>
+                    <span>Upload</span>
+                </div>
+                <div class="step completed">
+                    <span class="step-number">✓</span>
+                    <span>Map Columns</span>
+                </div>
+                <div class="step active">
+                    <span class="step-number">3</span>
+                    <span>Import</span>
+                </div>
+            </div>
+            
+            <h1 id="importTitle">Importing Products...</h1>
+            <p class="subtitle" id="importSubtitle">Please wait while we process your data</p>
+            
+            <div class="progress-section">
+                <div class="progress-bar-wrapper">
+                    <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+                </div>
+                <div class="progress-text" id="progressText">Preparing...</div>
+            </div>
+            
+            <div id="importResults" class="hidden">
+                <div class="summary-stats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalProducts">0</div>
+                        <div class="stat-label">Products Imported</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="priceListName">-</div>
+                        <div class="stat-label">Price List Created</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="vendorDisplay">-</div>
+                        <div class="stat-label">Vendor</div>
+                    </div>
+                </div>
+                
+                <div class="button-group">
+                    <button class="btn btn-success" onclick="resetUpload()">Upload Another File</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Global variables
+        let workbook = null;
+        let currentSheetData = [];
+        let selectedSheets = [];
+        let fileName = '';
+        let allColumns = [];
+        
+        // Initialize Zoho SDK
+        ZOHO.CREATOR.init()
+            .then(function() {
+                console.log("Zoho Creator Widget SDK initialized");
+            })
+            .catch(function(error) {
+                console.error("SDK initialization failed:", error);
+            });
+        
+        // Upload area handlers
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        
+        uploadArea.addEventListener('click', () => fileInput.click());
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) processFile(file);
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) processFile(file);
+        });
+        
+        // Process uploaded file
+        function processFile(file) {
+            fileName = file.name;
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // Show step 2
+                    document.getElementById('step1').classList.add('hidden');
+                    document.getElementById('step2').classList.remove('hidden');
+                    
+                    // Display file info
+                    document.getElementById('fileInfo').textContent = 
+                        `File: ${fileName} | Sheets found: ${workbook.SheetNames.length}`;
+                    
+                    // Create sheet tabs
+                    createSheetTabs();
+                    
+                    // Select first sheet by default
+                    if (workbook.SheetNames.length > 0) {
+                        selectSheet(workbook.SheetNames[0]);
+                    }
+                } catch (error) {
+                    alert('Error reading file: ' + error.message);
+                }
+            };
+            
+            reader.readAsArrayBuffer(file);
+        }
+        
+        // Create sheet tabs
+        function createSheetTabs() {
+            const tabsContainer = document.getElementById('sheetTabs');
+            tabsContainer.innerHTML = '';
+            selectedSheets = [];
+            
+            workbook.SheetNames.forEach((name, index) => {
+                const sheet = workbook.Sheets[name];
+                const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
+                const rowCount = range.e.r - range.s.r;
+                
+                const tab = document.createElement('button');
+                tab.className = 'sheet-tab';
+                tab.innerHTML = `${name} <span class="row-count">(${rowCount} rows)</span>`;
+                tab.onclick = () => selectSheet(name);
+                tab.dataset.sheet = name;
+                tabsContainer.appendChild(tab);
+            });
+        }
+        
+        // Select sheet
+        function selectSheet(sheetName) {
+            // Update tab styles
+            document.querySelectorAll('.sheet-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.sheet === sheetName);
+            });
+            
+            // Track selected sheet
+            if (!selectedSheets.includes(sheetName)) {
+                selectedSheets = [sheetName]; // For simplicity, one sheet at a time
+            }
+            
+            // Parse sheet data
+            const sheet = workbook.Sheets[sheetName];
+            const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+            
+            // Find header row (first row with multiple non-empty cells)
+            let headerRowIndex = 0;
+            for (let i = 0; i < Math.min(10, jsonData.length); i++) {
+                const nonEmptyCells = jsonData[i].filter(cell => cell !== '').length;
+                if (nonEmptyCells >= 3) {
+                    headerRowIndex = i;
+                    break;
+                }
+            }
+            
+            // Extract columns
+            allColumns = jsonData[headerRowIndex] || [];
+            currentSheetData = jsonData.slice(headerRowIndex + 1).filter(row => 
+                row.some(cell => cell !== '')
+            );
+            
+            // Populate column dropdowns
+            populateColumnDropdowns();
+            
+            // Show preview
+            showPreview();
+            
+            // Auto-detect columns
+            autoDetectColumns();
+        }
+        
+        // Populate dropdowns
+        function populateColumnDropdowns() {
+            const dropdowns = ['productCodeCol', 'descriptionCol', 'priceCol', 'categoryCol'];
+            
+            dropdowns.forEach(id => {
+                const select = document.getElementById(id);
+                select.innerHTML = '<option value="">-- Select --</option>';
+                
+                allColumns.forEach((col, index) => {
+                    if (col) {
+                        const option = document.createElement('option');
+                        option.value = index;
+                        option.textContent = col.toString().substring(0, 40);
+                        select.appendChild(option);
+                    }
+                });
+            });
+        }
+        
+        // Auto-detect columns based on common names
+        function autoDetectColumns() {
+            const codePatterns = ['code', 'item', 'sku', 'part', 'model', 'product code', 'item code'];
+            const descPatterns = ['desc', 'name', 'product', 'title', 'specification'];
+            const pricePatterns = ['price', 'cost', 'amount', 'value', 'rate', 'standard'];
+            const categoryPatterns = ['category', 'type', 'group', 'class'];
+            
+            allColumns.forEach((col, index) => {
+                if (!col) return;
+                const colLower = col.toString().toLowerCase();
+                
+                if (codePatterns.some(p => colLower.includes(p)) && !document.getElementById('productCodeCol').value) {
+                    document.getElementById('productCodeCol').value = index;
+                }
+                if (descPatterns.some(p => colLower.includes(p)) && !document.getElementById('descriptionCol').value) {
+                    document.getElementById('descriptionCol').value = index;
+                }
+                if (pricePatterns.some(p => colLower.includes(p)) && !document.getElementById('priceCol').value) {
+                    document.getElementById('priceCol').value = index;
+                }
+                if (categoryPatterns.some(p => colLower.includes(p)) && !document.getElementById('categoryCol').value) {
+                    document.getElementById('categoryCol').value = index;
+                }
+            });
+        }
+        
+        // Show preview
+        function showPreview() {
+            const thead = document.getElementById('previewHead');
+            const tbody = document.getElementById('previewBody');
+            
+            // Header
+            thead.innerHTML = '<tr>' + allColumns.map(col => 
+                `<th>${col || '(empty)'}</th>`
+            ).join('') + '</tr>';
+            
+            // Body (first 10 rows)
+            tbody.innerHTML = currentSheetData.slice(0, 10).map(row => 
+                '<tr>' + allColumns.map((_, i) => 
+                    `<td>${row[i] || ''}</td>`
+                ).join('') + '</tr>'
+            ).join('');
+        }
+        
+        // Reset upload
+        function resetUpload() {
+            workbook = null;
+            currentSheetData = [];
+            selectedSheets = [];
+            fileName = '';
+            fileInput.value = '';
+            
+            document.getElementById('step1').classList.remove('hidden');
+            document.getElementById('step2').classList.add('hidden');
+            document.getElementById('step3').classList.add('hidden');
+            document.getElementById('importResults').classList.add('hidden');
+        }
+        
+        // Start import
+        async function startImport() {
+            const vendorName = document.getElementById('vendorName').value.trim();
+            const productCodeColIdx = document.getElementById('productCodeCol').value;
+            const priceColIdx = document.getElementById('priceCol').value;
+            const descColIdx = document.getElementById('descriptionCol').value;
+            const categoryColIdx = document.getElementById('categoryCol').value;
+            const markupPercent = parseFloat(document.getElementById('markupPercent').value) || 45;
+            
+            // Validation
+            if (!vendorName) {
+                alert('Please enter a vendor name');
+                return;
+            }
+            if (!productCodeColIdx) {
+                alert('Please select a Product Code column');
+                return;
+            }
+            if (!priceColIdx) {
+                alert('Please select a Price column');
+                return;
+            }
+            
+            // Show step 3
+            document.getElementById('step2').classList.add('hidden');
+            document.getElementById('step3').classList.remove('hidden');
+            
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            
+            try {
+                // Create Price List record first
+                progressText.textContent = 'Creating price list record...';
+                progressBar.style.width = '10%';
+                
+                const priceListData = {
+                    data: {
+                        File_Name: fileName,
+                        Vendor_Name: vendorName,
+                        Upload_Date: new Date().toISOString().split('T')[0],
+                        Product_Count: currentSheetData.length
+                    }
+                };
+                
+                // Add to Price_Lists form
+                await ZOHO.CREATOR.API.addRecord({
+                    appName: "forbtech-pricelist-manager",
+                    formName: "Price_Lists",
+                    data: priceListData
+                });
+                
+                // Process products
+                const totalProducts = currentSheetData.length;
+                let imported = 0;
+                let errors = 0;
+                
+                progressText.textContent = `Importing products: 0/${totalProducts}`;
+                progressBar.style.width = '20%';
+                
+                // Batch products for efficiency
+                const batchSize = 10;
+                for (let i = 0; i < currentSheetData.length; i += batchSize) {
+                    const batch = currentSheetData.slice(i, i + batchSize);
+                    
+                    for (const row of batch) {
+                        const productCode = row[productCodeColIdx];
+                        const costPrice = parseFloat(row[priceColIdx]) || 0;
+                        
+                        if (!productCode || costPrice === 0) {
+                            errors++;
+                            continue;
+                        }
+                        
+                        const sellingPrice = costPrice * (1 + markupPercent / 100);
+                        
+                        const productData = {
+                            data: {
+                                product_code: productCode.toString(),
+                                description: descColIdx ? (row[descColIdx] || '').toString() : '',
+                                cost_price: costPrice,
+                                selling_price: Math.round(sellingPrice * 100) / 100,
+                                markup_percent: markupPercent,
+                                vendor_name: vendorName,
+                                category: categoryColIdx ? (row[categoryColIdx] || '').toString() : ''
+                            }
+                        };
+                        
+                        try {
+                            await ZOHO.CREATOR.API.addRecord({
+                                appName: "forbtech-pricelist-manager",
+                                formName: "Products",
+                                data: productData
+                            });
+                            imported++;
+                        } catch (err) {
+                            console.error('Error adding product:', err);
+                            errors++;
+                        }
+                    }
+                    
+                    // Update progress
+                    const progress = 20 + ((i + batch.length) / totalProducts * 80);
+                    progressBar.style.width = `${progress}%`;
+                    progressText.textContent = `Importing products: ${imported}/${totalProducts}`;
+                }
+                
+                // Show results
+                document.getElementById('importTitle').textContent = 'Import Complete!';
+                document.getElementById('importSubtitle').textContent = 
+                    errors > 0 ? `${imported} products imported, ${errors} skipped` : 'All products imported successfully';
+                
+                document.getElementById('totalProducts').textContent = imported;
+                document.getElementById('priceListName').textContent = fileName.substring(0, 20);
+                document.getElementById('vendorDisplay').textContent = vendorName;
+                
+                document.getElementById('importResults').classList.remove('hidden');
+                progressBar.style.width = '100%';
+                progressText.textContent = 'Done!';
+                
+            } catch (error) {
+                console.error('Import error:', error);
+                document.getElementById('importTitle').textContent = 'Import Error';
+                document.getElementById('importSubtitle').textContent = error.message || 'An error occurred during import';
+                progressBar.style.background = '#ef4444';
+            }
+        }
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9e463f9dde7290cf',t:'MTc3NDg2NDYyOQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><iframe height="1" width="1" style="position: absolute; top: 0px; left: 0px; border: none; visibility: hidden;" src="./Price List Uploader_files/saved_resource.html"></iframe><script defer="" src="./Price List Uploader_files/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon="{&quot;version&quot;:&quot;2024.11.0&quot;,&quot;token&quot;:&quot;7f7b0fd8732c4326aae4b9d58d5c514a&quot;,&quot;server_timing&quot;:{&quot;name&quot;:{&quot;cfCacheStatus&quot;:true,&quot;cfEdge&quot;:true,&quot;cfExtPri&quot;:true,&quot;cfL4&quot;:true,&quot;cfOrigin&quot;:true,&quot;cfSpeedBrain&quot;:true},&quot;location_startswith&quot;:null}}" crossorigin="anonymous"></script>
+
+
+</body></html>
