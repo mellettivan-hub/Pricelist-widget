@@ -8,510 +8,346 @@
     <script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
-        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f7fa;padding:20px;color:#333}
-        .container{max-width:900px;margin:0 auto}
-        .card{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.1);padding:24px;margin-bottom:20px}
-        h1{font-size:22px;color:#1a1a2e;margin-bottom:6px}
-        h2{font-size:18px;color:#1a1a2e;margin-bottom:16px;display:flex;align-items:center;gap:8px}
-        .subtitle{color:#666;font-size:14px;margin-bottom:20px}
-        
-        /* Upload Area */
-        .upload-area{border:2px dashed #d0d5dd;border-radius:12px;padding:40px;text-align:center;background:#fafbfc}
-        .upload-icon{font-size:48px;margin-bottom:16px}
-        .upload-text{font-size:16px;color:#333;margin-bottom:8px}
-        .upload-hint{font-size:13px;color:#888;margin-bottom:20px}
-        .file-input-label{display:inline-block;padding:16px 40px;background:#3b82f6;color:#fff;border-radius:8px;font-size:18px;font-weight:600;cursor:pointer}
-        .file-input-label:hover{background:#2563eb}
-        .file-input-label input[type="file"]{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f8f9fa;padding:20px;color:#333}
+        .container{max-width:850px;margin:0 auto}
+        .card{background:#fff;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.1);padding:24px;margin-bottom:20px}
         
         /* Steps */
-        .steps{display:flex;justify-content:center;align-items:center;margin-bottom:24px;gap:12px}
-        .step{display:flex;align-items:center;gap:8px;font-size:14px;color:#999}
-        .step.active{color:#3b82f6;font-weight:600}
-        .step.completed{color:#10b981}
-        .step-num{width:28px;height:28px;border-radius:50%;background:#e5e7eb;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:13px}
-        .step.active .step-num{background:#3b82f6;color:#fff}
-        .step.completed .step-num{background:#10b981;color:#fff}
-        .step-arrow{color:#d0d5dd}
+        .steps{display:flex;justify-content:center;align-items:center;gap:8px;margin-bottom:30px;font-size:14px}
+        .step-num{width:26px;height:26px;border-radius:50%;background:#3b82f6;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:600;font-size:12px}
+        .step-num.gray{background:#9ca3af}
+        .step-text{margin-left:6px;color:#3b82f6}
+        .step-text.gray{color:#9ca3af}
+        .step-arrow{color:#d1d5db;margin:0 8px}
         
-        /* Sheet tags */
-        .sheets-info{background:#eef2ff;border-radius:8px;padding:16px;margin-bottom:20px}
-        .sheets-info-title{font-size:14px;margin-bottom:10px}
-        .sheets-info-title strong{color:#3b82f6}
+        /* Upload */
+        .upload-area{border:2px dashed #d1d5db;border-radius:8px;padding:50px;text-align:center;background:#fafafa;cursor:pointer}
+        .upload-area:hover{border-color:#3b82f6;background:#f0f7ff}
+        .upload-icon{font-size:40px;margin-bottom:12px}
+        .upload-text{font-size:15px;color:#374151;margin-bottom:6px}
+        .upload-hint{font-size:13px;color:#9ca3af}
+        .file-label{display:inline-block;margin-top:16px;padding:12px 28px;background:#3b82f6;color:#fff;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer}
+        .file-label:hover{background:#2563eb}
+        .file-label input{display:none}
+        
+        h2{font-size:16px;color:#111;margin-bottom:20px;display:flex;align-items:center;gap:8px}
+        
+        /* Sheets info box */
+        .sheets-box{background:#eef2ff;border-radius:6px;padding:14px;margin-bottom:20px}
+        .sheets-box p{font-size:13px;color:#374151;margin-bottom:10px}
+        .sheets-box strong{color:#3b82f6}
         .sheet-tags{display:flex;flex-wrap:wrap;gap:6px}
-        .sheet-tag{padding:4px 12px;background:#3b82f6;color:#fff;border-radius:4px;font-size:12px}
-        .sheet-tag.more{background:#64748b}
+        .sheet-tag{padding:4px 10px;background:#3b82f6;color:#fff;border-radius:4px;font-size:11px}
+        .sheet-tag.more{background:#6b7280}
         
-        /* Column mapping row */
-        .mapping-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px}
-        @media(max-width:768px){.mapping-row{grid-template-columns:1fr}}
+        /* Vendor input */
+        .vendor-row{margin-bottom:20px}
+        .vendor-row label{display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;text-transform:uppercase}
+        .vendor-row input{width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:14px}
+        .vendor-row input:focus{outline:none;border-color:#3b82f6}
         
-        .mapping-col{position:relative}
-        .mapping-col label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:#374151}
-        .mapping-col label .req{color:#ef4444}
+        /* Column selects row */
+        .selects-row{display:flex;gap:12px;margin-bottom:20px}
+        .select-col{flex:1}
+        .select-col label{display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:6px;text-transform:uppercase}
+        .select-col label .req{color:#ef4444}
         
-        /* Multi-select dropdown */
-        .multi-select{position:relative}
-        .multi-select-btn{width:100%;padding:10px 12px;border:1px solid #d0d5dd;border-radius:8px;background:#fff;text-align:left;cursor:pointer;font-size:14px;color:#666;display:flex;justify-content:space-between;align-items:center}
-        .multi-select-btn:hover{border-color:#3b82f6}
-        .multi-select-btn.has-selection{color:#111}
-        .multi-select-btn .arrow{font-size:10px;color:#999}
-        .multi-select-dropdown{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #d0d5dd;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.15);z-index:100;max-height:250px;overflow-y:auto;display:none}
-        .multi-select-dropdown.open{display:block}
-        .multi-select-item{padding:10px 12px;display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;border-bottom:1px solid #f0f0f0}
-        .multi-select-item:hover{background:#f8fafc}
-        .multi-select-item:last-child{border-bottom:none}
-        .multi-select-item input{width:16px;height:16px;cursor:pointer}
-        .multi-select-item.selected{background:#eef2ff}
+        /* Dropdown */
+        .dropdown{position:relative}
+        .dropdown-btn{width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:6px;background:#fff;text-align:left;cursor:pointer;font-size:13px;color:#6b7280;display:flex;justify-content:space-between;align-items:center}
+        .dropdown-btn:hover{border-color:#9ca3af}
+        .dropdown-btn .arrow{font-size:10px}
+        .dropdown-list{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #d1d5db;border-radius:6px;box-shadow:0 4px 6px rgba(0,0,0,.1);z-index:100;max-height:220px;overflow-y:auto;display:none}
+        .dropdown-list.open{display:block}
+        .dropdown-item{padding:8px 12px;display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;border-bottom:1px solid #f3f4f6}
+        .dropdown-item:last-child{border-bottom:none}
+        .dropdown-item:hover{background:#f9fafb}
+        .dropdown-item input{width:14px;height:14px}
+        .dropdown-item.checked{background:#eff6ff}
         
-        /* Markup section */
-        .markup-box{background:#dcfce7;border:1px solid #22c55e;border-radius:8px;padding:16px;margin-bottom:20px}
-        .markup-box-title{font-size:13px;color:#166534;margin-bottom:8px}
-        .markup-calc{background:#fff;border:1px dashed #22c55e;border-radius:6px;padding:12px;text-align:center}
-        .markup-calc .example{font-size:12px;color:#666;margin-bottom:4px}
-        .markup-calc .values{font-size:15px}
-        .markup-calc .cost{color:#666}
-        .markup-calc .arrow{margin:0 8px;color:#999}
-        .markup-calc .selling{color:#22c55e;font-weight:600}
-        .markup-input-row{display:flex;align-items:center;gap:10px;margin-top:12px}
-        .markup-input-row label{font-size:13px;color:#374151}
-        .markup-input-row input{width:70px;padding:8px;border:1px solid #d0d5dd;border-radius:6px;text-align:center;font-size:14px;font-weight:600}
+        /* Markup box */
+        .markup-box{background:#dcfce7;border-radius:6px;padding:16px;margin-bottom:20px}
+        .markup-example{background:#fff;border:1px dashed #86efac;border-radius:4px;padding:12px;text-align:center;margin-bottom:12px}
+        .markup-example .label{font-size:11px;color:#6b7280;margin-bottom:4px}
+        .markup-example .calc{font-size:14px}
+        .markup-example .cost{color:#6b7280}
+        .markup-example .selling{color:#22c55e;font-weight:600}
+        .markup-row{display:flex;align-items:center;gap:8px;font-size:13px;color:#166534}
+        .markup-row input{width:60px;padding:6px 8px;border:1px solid #86efac;border-radius:4px;text-align:center;font-size:14px}
         
-        /* Info text */
-        .info-text{font-size:12px;color:#666;margin-top:16px;padding:12px;background:#f8fafc;border-radius:6px}
+        .info-text{font-size:12px;color:#6b7280;padding:10px;background:#f9fafb;border-radius:4px;margin-bottom:20px}
         
         /* Buttons */
-        .button-row{display:flex;gap:12px;margin-top:24px}
-        .btn{flex:1;padding:14px 24px;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;border:none;text-align:center}
-        .btn-secondary{background:#f3f4f6;color:#374151}
-        .btn-secondary:hover{background:#e5e7eb}
-        .btn-primary{background:#3b82f6;color:#fff}
-        .btn-primary:hover{background:#2563eb}
+        .btn-row{display:flex;gap:12px}
+        .btn{flex:1;padding:12px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;border:none;text-align:center}
+        .btn-back{background:#f3f4f6;color:#374151}
+        .btn-back:hover{background:#e5e7eb}
+        .btn-import{background:#6b7280;color:#fff}
+        .btn-import:hover{background:#4b5563}
         .btn-success{background:#22c55e;color:#fff}
         
         /* Progress */
-        .progress-section{margin:24px 0}
-        .progress-bar-bg{height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden}
-        .progress-bar{height:100%;background:#3b82f6;border-radius:4px;transition:width .3s}
-        .progress-text{text-align:center;margin-top:8px;font-size:14px;color:#666}
+        .progress-box{margin:20px 0}
+        .progress-bar-bg{height:6px;background:#e5e7eb;border-radius:3px}
+        .progress-bar{height:100%;background:#3b82f6;border-radius:3px;transition:width .2s}
+        .progress-text{text-align:center;margin-top:8px;font-size:13px;color:#6b7280}
         
-        /* Results */
-        .results{margin-top:24px}
-        .result-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
-        .result-card{text-align:center;padding:20px;background:#f8fafc;border-radius:8px}
-        .result-card .value{font-size:32px;font-weight:700;color:#3b82f6}
-        .result-card .label{font-size:13px;color:#666;margin-top:4px}
+        .results{margin-top:20px}
+        .result-row{display:flex;gap:12px;margin-bottom:16px}
+        .result-card{flex:1;text-align:center;padding:16px;background:#f9fafb;border-radius:6px}
+        .result-card .num{font-size:28px;font-weight:700;color:#3b82f6}
+        .result-card .txt{font-size:12px;color:#6b7280;margin-top:4px}
         
         .hidden{display:none!important}
-        .status-box{margin-top:16px;padding:12px;border-radius:8px;text-align:center}
-        .status-box.loading{background:#e0f2fe;color:#0369a1}
-        .status-box.error{background:#fee2e2;color:#991b1b}
+        .status{margin-top:12px;padding:10px;border-radius:6px;text-align:center;font-size:13px}
+        .status.loading{background:#e0f2fe;color:#0369a1}
+        .status.error{background:#fee2e2;color:#991b1b}
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Step 1: Upload -->
-        <div id="step1" class="card">
-            <div class="steps">
-                <div class="step active"><span class="step-num">1</span>Upload</div>
-                <span class="step-arrow">→</span>
-                <div class="step"><span class="step-num">2</span>Map Columns</div>
-                <span class="step-arrow">→</span>
-                <div class="step"><span class="step-num">3</span>Done</div>
-            </div>
-            <h1>Upload Price List</h1>
-            <p class="subtitle">Import ALL sheets from vendor price lists</p>
-            <div class="upload-area">
-                <div class="upload-icon">📁</div>
-                <div class="upload-text">Click to select your Excel file</div>
-                <div class="upload-hint">Supports .xlsx, .xls, .csv</div>
-                <label class="file-input-label">
-                    📂 SELECT FILE
-                    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="handleFile(this)">
-                </label>
-            </div>
-            <div id="statusBox" class="status-box hidden"></div>
+<div class="container">
+    <!-- Step 1 -->
+    <div id="step1" class="card">
+        <div class="steps">
+            <span class="step-num">1</span><span class="step-text">Upload</span>
+            <span class="step-arrow">→</span>
+            <span class="step-num gray">2</span><span class="step-text gray">Map Columns</span>
+            <span class="step-arrow">→</span>
+            <span class="step-num gray">3</span><span class="step-text gray">Done</span>
         </div>
+        <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">Upload Price List</div>
+            <div class="upload-hint">Import ALL sheets from vendor price lists</div>
+            <label class="file-label">
+                Select Excel File
+                <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="handleFile(this)">
+            </label>
+        </div>
+        <div id="status" class="status hidden"></div>
+    </div>
 
-        <!-- Step 2: Map Columns -->
-        <div id="step2" class="card hidden">
-            <div class="steps">
-                <div class="step completed"><span class="step-num">✓</span>Upload</div>
-                <span class="step-arrow">→</span>
-                <div class="step active"><span class="step-num">2</span>Map Columns</div>
-                <span class="step-arrow">→</span>
-                <div class="step"><span class="step-num">3</span>Done</div>
-            </div>
-            
-            <h2>📋 Map Your Columns</h2>
-            
-            <div class="sheets-info">
-                <div class="sheets-info-title">Found <strong id="sheetCount">0</strong> sheets in this file. Select ALL column names that contain product codes, descriptions, and prices.</div>
-                <div class="sheet-tags" id="sheetTags"></div>
-            </div>
-            
-            <!-- Vendor Input -->
-            <div style="margin-bottom:20px">
-                <label style="display:block;font-size:13px;font-weight:600;margin-bottom:6px">VENDOR NAME <span style="color:#ef4444">*</span></label>
-                <input type="text" id="vendorName" placeholder="Enter vendor name (e.g., HIKVISION SA)" style="width:100%;padding:10px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:14px">
-            </div>
-            
-            <!-- Column Mapping Dropdowns -->
-            <div class="mapping-row">
-                <div class="mapping-col">
-                    <label>PRODUCT CODE COLUMNS <span class="req">*</span></label>
-                    <div class="multi-select" id="codeSelect">
-                        <button type="button" class="multi-select-btn" onclick="toggleDropdown('codeSelect')">
-                            <span>-- Select columns --</span>
-                            <span class="arrow">▼</span>
-                        </button>
-                        <div class="multi-select-dropdown" id="codeDropdown"></div>
-                    </div>
-                </div>
-                <div class="mapping-col">
-                    <label>DESCRIPTION COLUMNS</label>
-                    <div class="multi-select" id="descSelect">
-                        <button type="button" class="multi-select-btn" onclick="toggleDropdown('descSelect')">
-                            <span>-- Select columns --</span>
-                            <span class="arrow">▼</span>
-                        </button>
-                        <div class="multi-select-dropdown" id="descDropdown"></div>
-                    </div>
-                </div>
-                <div class="mapping-col">
-                    <label>PRICE COLUMNS <span class="req">*</span></label>
-                    <div class="multi-select" id="priceSelect">
-                        <button type="button" class="multi-select-btn" onclick="toggleDropdown('priceSelect')">
-                            <span>-- Select columns --</span>
-                            <span class="arrow">▼</span>
-                        </button>
-                        <div class="multi-select-dropdown" id="priceDropdown"></div>
-                    </div>
+    <!-- Step 2 -->
+    <div id="step2" class="card hidden">
+        <div class="steps">
+            <span class="step-num">1</span><span class="step-text">Upload</span>
+            <span class="step-arrow">→</span>
+            <span class="step-num">2</span><span class="step-text">Map Columns</span>
+            <span class="step-arrow">→</span>
+            <span class="step-num gray">3</span><span class="step-text gray">Done</span>
+        </div>
+        
+        <h2>📋 Map Your Columns</h2>
+        
+        <div class="sheets-box">
+            <p>Found <strong id="sheetCount">0</strong> sheets in this file. Select ALL column names that contain product codes, descriptions, and prices.</p>
+            <div class="sheet-tags" id="sheetTags"></div>
+        </div>
+        
+        <div class="vendor-row">
+            <label>Vendor Name *</label>
+            <input type="text" id="vendorName" placeholder="Enter vendor name (e.g., HIKVISION SA)">
+        </div>
+        
+        <div class="selects-row">
+            <div class="select-col">
+                <label>Product Code Columns <span class="req">*</span></label>
+                <div class="dropdown" id="codeDD">
+                    <button type="button" class="dropdown-btn" onclick="toggle('codeDD')"><span id="codeLabel">-- Select columns --</span><span class="arrow">▼</span></button>
+                    <div class="dropdown-list" id="codeList"></div>
                 </div>
             </div>
-            
-            <!-- Markup Calculator -->
-            <div class="markup-box">
-                <div class="markup-calc">
-                    <div class="example">Example Calculation:</div>
-                    <div class="values">
-                        <span class="cost">Cost: R <span id="exampleCost">1000.00</span></span>
-                        <span class="arrow">→</span>
-                        <span class="selling">Selling: R <span id="exampleSelling">1450.00</span></span>
-                    </div>
-                </div>
-                <div class="markup-input-row">
-                    <label>Markup Percentage:</label>
-                    <input type="number" id="markupPercent" value="45" min="0" max="500" onchange="updateExample()">
-                    <span style="font-size:13px;color:#666">% - Both cost price and selling price will be stored.</span>
+            <div class="select-col">
+                <label>Description Columns</label>
+                <div class="dropdown" id="descDD">
+                    <button type="button" class="dropdown-btn" onclick="toggle('descDD')"><span id="descLabel">-- Select columns --</span><span class="arrow">▼</span></button>
+                    <div class="dropdown-list" id="descList"></div>
                 </div>
             </div>
-            
-            <div class="info-text">
-                💡 <strong>Tip:</strong> Select multiple columns for product codes and prices. The system will try each one on every sheet.
-            </div>
-            
-            <div class="button-row">
-                <button class="btn btn-secondary" onclick="resetUpload()">Back</button>
-                <button class="btn btn-primary" onclick="startImport()">Import All Products ✓</button>
+            <div class="select-col">
+                <label>Price Columns <span class="req">*</span></label>
+                <div class="dropdown" id="priceDD">
+                    <button type="button" class="dropdown-btn" onclick="toggle('priceDD')"><span id="priceLabel">-- Select columns --</span><span class="arrow">▼</span></button>
+                    <div class="dropdown-list" id="priceList"></div>
+                </div>
             </div>
         </div>
-
-        <!-- Step 3: Done -->
-        <div id="step3" class="card hidden">
-            <div class="steps">
-                <div class="step completed"><span class="step-num">✓</span>Upload</div>
-                <span class="step-arrow">→</span>
-                <div class="step completed"><span class="step-num">✓</span>Map Columns</div>
-                <span class="step-arrow">→</span>
-                <div class="step active"><span class="step-num">3</span>Done</div>
+        
+        <div class="markup-box">
+            <div class="markup-example">
+                <div class="label">Example Calculation:</div>
+                <div class="calc"><span class="cost">Cost: R <span id="exCost">1000.00</span></span> → <span class="selling">Selling: R <span id="exSell">1450.00</span></span></div>
             </div>
-            
-            <h2 id="importTitle">Importing Products...</h2>
-            
-            <div class="progress-section">
-                <div class="progress-bar-bg"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
-                <div class="progress-text" id="progressText">Preparing...</div>
+            <div class="markup-row">
+                <input type="number" id="markup" value="45" min="0" max="500" onchange="calcEx()">
+                <span>% markup. Both cost price and selling price will be stored.</span>
             </div>
-            
-            <div id="importResults" class="results hidden">
-                <div class="result-cards">
-                    <div class="result-card"><div class="value" id="totalImported">0</div><div class="label">Products Imported</div></div>
-                    <div class="result-card"><div class="value" id="totalSkipped">0</div><div class="label">Rows Skipped</div></div>
-                    <div class="result-card"><div class="value" id="vendorDisplay">-</div><div class="label">Vendor</div></div>
-                </div>
-                <button class="btn btn-success" onclick="resetUpload()" style="width:100%">✓ Upload Another File</button>
-            </div>
+        </div>
+        
+        <div class="info-text">💡 Select multiple columns for product codes and prices. The system will try each one on every sheet.</div>
+        
+        <div class="btn-row">
+            <button class="btn btn-back" onclick="reset()">Back</button>
+            <button class="btn btn-import" onclick="doImport()">Import All Products ✓</button>
         </div>
     </div>
 
+    <!-- Step 3 -->
+    <div id="step3" class="card hidden">
+        <div class="steps">
+            <span class="step-num">1</span><span class="step-text">Upload</span>
+            <span class="step-arrow">→</span>
+            <span class="step-num">2</span><span class="step-text">Map Columns</span>
+            <span class="step-arrow">→</span>
+            <span class="step-num">3</span><span class="step-text">Done</span>
+        </div>
+        <h2 id="title3">Importing...</h2>
+        <div class="progress-box">
+            <div class="progress-bar-bg"><div class="progress-bar" id="pbar" style="width:0"></div></div>
+            <div class="progress-text" id="ptxt">Preparing...</div>
+        </div>
+        <div id="results" class="results hidden">
+            <div class="result-row">
+                <div class="result-card"><div class="num" id="rImported">0</div><div class="txt">Products Imported</div></div>
+                <div class="result-card"><div class="num" id="rSkipped">0</div><div class="txt">Rows Skipped</div></div>
+                <div class="result-card"><div class="num" id="rVendor">-</div><div class="txt">Vendor</div></div>
+            </div>
+            <button class="btn btn-success" onclick="reset()" style="width:100%">Upload Another File</button>
+        </div>
+    </div>
+</div>
+
 <script>
-var workbook=null,allSheetData=[],fileName='',allColumns=[],zohoReady=false;
-var selectedCode=[],selectedDesc=[],selectedPrice=[];
+var wb=null,allData=[],fileName='',cols=[],zoho=false;
+var selCode=[],selDesc=[],selPrice=[];
 
-if(typeof ZOHO!=='undefined'&&ZOHO.CREATOR){
-    ZOHO.CREATOR.init().then(function(){zohoReady=true}).catch(function(e){console.log(e)});
-}
+if(typeof ZOHO!=='undefined'&&ZOHO.CREATOR){ZOHO.CREATOR.init().then(function(){zoho=true}).catch(function(){});}
 
-function showStatus(msg,type){
-    var box=document.getElementById('statusBox');
-    box.className='status-box '+type;
-    box.textContent=msg;
-    box.classList.remove('hidden');
-}
-
-function handleFile(input){
-    if(!input.files||!input.files.length)return;
-    var file=input.files[0];
-    fileName=file.name;
-    showStatus('Reading '+fileName+'...','loading');
-    
-    var reader=new FileReader();
-    reader.onload=function(e){
+function handleFile(inp){
+    if(!inp.files||!inp.files[0])return;
+    var f=inp.files[0];
+    fileName=f.name;
+    showSt('Reading '+fileName+'...','loading');
+    var r=new FileReader();
+    r.onload=function(e){
         try{
-            workbook=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
-            if(!workbook.SheetNames.length){showStatus('No sheets found','error');return;}
-            
-            // Collect all unique columns from all sheets
-            allColumns=[];
-            allSheetData=[];
-            var colSet={};
-            
-            workbook.SheetNames.forEach(function(name){
-                var sheet=workbook.Sheets[name];
-                var json=XLSX.utils.sheet_to_json(sheet,{header:1,defval:''});
-                
-                // Find header row
-                var headerIdx=0;
-                for(var i=0;i<Math.min(15,json.length);i++){
-                    var cnt=0;
-                    for(var j=0;j<(json[i]||[]).length;j++)if(json[i][j]!=='')cnt++;
-                    if(cnt>=3){headerIdx=i;break;}
-                }
-                
-                var headers=json[headerIdx]||[];
-                headers.forEach(function(h){
-                    if(h&&!colSet[h]){colSet[h]=true;allColumns.push(h);}
-                });
-                
-                // Store data rows
-                for(var k=headerIdx+1;k<json.length;k++){
-                    var row=json[k];
-                    var hasData=false;
-                    for(var l=0;l<row.length;l++)if(row[l]!==''){hasData=true;break;}
-                    if(hasData){
-                        var rowObj={_sheet:name,_headers:headers,_data:row};
-                        allSheetData.push(rowObj);
-                    }
-                }
+            wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+            if(!wb.SheetNames.length){showSt('No sheets','error');return;}
+            cols=[];allData=[];var seen={};
+            wb.SheetNames.forEach(function(sn){
+                var sh=wb.Sheets[sn],js=XLSX.utils.sheet_to_json(sh,{header:1,defval:''});
+                var hi=0;
+                for(var i=0;i<Math.min(15,js.length);i++){var c=0;for(var j=0;j<(js[i]||[]).length;j++)if(js[i][j]!=='')c++;if(c>=3){hi=i;break;}}
+                var hdr=js[hi]||[];
+                hdr.forEach(function(h){if(h&&!seen[h]){seen[h]=1;cols.push(h);}});
+                for(var k=hi+1;k<js.length;k++){var rw=js[k],has=false;for(var l=0;l<rw.length;l++)if(rw[l]!==''){has=true;break;}if(has)allData.push({h:hdr,d:rw});}
             });
-            
             document.getElementById('step1').classList.add('hidden');
             document.getElementById('step2').classList.remove('hidden');
-            
-            // Show sheet info
-            document.getElementById('sheetCount').textContent=workbook.SheetNames.length;
-            var tagsHtml='';
-            var maxShow=8;
-            workbook.SheetNames.slice(0,maxShow).forEach(function(n){tagsHtml+='<span class="sheet-tag">'+n+'</span>'});
-            if(workbook.SheetNames.length>maxShow)tagsHtml+='<span class="sheet-tag more">+'+(workbook.SheetNames.length-maxShow)+' more</span>';
-            document.getElementById('sheetTags').innerHTML=tagsHtml;
-            
-            populateDropdowns();
-            autoDetect();
-            
-        }catch(err){showStatus('Error: '+err.message,'error');}
+            document.getElementById('sheetCount').textContent=wb.SheetNames.length;
+            var tg='',mx=8;
+            wb.SheetNames.slice(0,mx).forEach(function(n){tg+='<span class="sheet-tag">'+n+'</span>';});
+            if(wb.SheetNames.length>mx)tg+='<span class="sheet-tag more">+'+(wb.SheetNames.length-mx)+' more</span>';
+            document.getElementById('sheetTags').innerHTML=tg;
+            fillDD();autoSel();
+        }catch(err){showSt('Error: '+err.message,'error');}
     };
-    reader.readAsArrayBuffer(file);
+    r.readAsArrayBuffer(f);
 }
 
-function populateDropdowns(){
-    ['codeDropdown','descDropdown','priceDropdown'].forEach(function(id){
-        var dd=document.getElementById(id);
-        dd.innerHTML='';
-        allColumns.forEach(function(col,i){
-            var div=document.createElement('div');
-            div.className='multi-select-item';
-            div.innerHTML='<input type="checkbox" value="'+i+'" onchange="handleCheck(this,\''+id+'\')"><span>'+col+'</span>';
-            dd.appendChild(div);
+function showSt(m,t){var s=document.getElementById('status');s.className='status '+t;s.textContent=m;s.classList.remove('hidden');}
+
+function fillDD(){
+    ['codeList','descList','priceList'].forEach(function(id){
+        var el=document.getElementById(id);el.innerHTML='';
+        cols.forEach(function(c,i){
+            var d=document.createElement('div');d.className='dropdown-item';d.innerHTML='<input type="checkbox" data-i="'+i+'" onchange="chk(this,\''+id+'\')"><span>'+c+'</span>';
+            el.appendChild(d);
         });
     });
 }
 
-function toggleDropdown(selectId){
-    var dd=document.getElementById(selectId.replace('Select','Dropdown'));
-    // Close all others
-    document.querySelectorAll('.multi-select-dropdown').forEach(function(d){
-        if(d.id!==dd.id)d.classList.remove('open');
+function toggle(id){
+    var list=document.getElementById(id).querySelector('.dropdown-list');
+    document.querySelectorAll('.dropdown-list').forEach(function(l){if(l!==list)l.classList.remove('open');});
+    list.classList.toggle('open');
+}
+document.addEventListener('click',function(e){if(!e.target.closest('.dropdown'))document.querySelectorAll('.dropdown-list').forEach(function(l){l.classList.remove('open');});});
+
+function chk(cb,listId){
+    var i=parseInt(cb.dataset.i),arr,lbl;
+    if(listId==='codeList'){arr=selCode;lbl='codeLabel';}
+    else if(listId==='descList'){arr=selDesc;lbl='descLabel';}
+    else{arr=selPrice;lbl='priceLabel';}
+    var p=arr.indexOf(i);
+    if(cb.checked&&p===-1)arr.push(i);
+    else if(!cb.checked&&p!==-1)arr.splice(p,1);
+    cb.parentElement.classList.toggle('checked',cb.checked);
+    document.getElementById(lbl).textContent=arr.length?arr.length+' selected':'-- Select columns --';
+}
+
+function autoSel(){
+    selCode=[];selDesc=[];selPrice=[];
+    var cp=['code','item','sku','part','model'],dp=['desc','name','spec','title'],pp=['price','cost','rate','reseller','standard','amount'];
+    cols.forEach(function(c,i){
+        var l=c.toLowerCase();
+        cp.forEach(function(p){if(l.indexOf(p)!==-1&&selCode.indexOf(i)===-1){selCode.push(i);mark('codeList',i);}});
+        dp.forEach(function(p){if(l.indexOf(p)!==-1&&selDesc.indexOf(i)===-1){selDesc.push(i);mark('descList',i);}});
+        pp.forEach(function(p){if(l.indexOf(p)!==-1&&selPrice.indexOf(i)===-1){selPrice.push(i);mark('priceList',i);}});
     });
-    dd.classList.toggle('open');
+    document.getElementById('codeLabel').textContent=selCode.length?selCode.length+' selected':'-- Select columns --';
+    document.getElementById('descLabel').textContent=selDesc.length?selDesc.length+' selected':'-- Select columns --';
+    document.getElementById('priceLabel').textContent=selPrice.length?selPrice.length+' selected':'-- Select columns --';
 }
+function mark(listId,i){var cb=document.querySelector('#'+listId+' input[data-i="'+i+'"]');if(cb){cb.checked=true;cb.parentElement.classList.add('checked');}}
 
-// Close dropdowns when clicking outside
-document.addEventListener('click',function(e){
-    if(!e.target.closest('.multi-select')){
-        document.querySelectorAll('.multi-select-dropdown').forEach(function(d){d.classList.remove('open')});
-    }
-});
+function calcEx(){var m=parseFloat(document.getElementById('markup').value)||45;document.getElementById('exCost').textContent='1000.00';document.getElementById('exSell').textContent=(1000*(1+m/100)).toFixed(2);}
 
-function handleCheck(cb,dropdownId){
-    var idx=parseInt(cb.value);
-    var arr,btnId;
-    if(dropdownId==='codeDropdown'){arr=selectedCode;btnId='codeSelect';}
-    else if(dropdownId==='descDropdown'){arr=selectedDesc;btnId='descSelect';}
-    else{arr=selectedPrice;btnId='priceSelect';}
-    
-    var pos=arr.indexOf(idx);
-    if(cb.checked&&pos===-1)arr.push(idx);
-    else if(!cb.checked&&pos!==-1)arr.splice(pos,1);
-    
-    cb.parentElement.classList.toggle('selected',cb.checked);
-    updateBtnText(btnId,arr);
-}
-
-function updateBtnText(selectId,arr){
-    var btn=document.querySelector('#'+selectId+' .multi-select-btn span:first-child');
-    if(arr.length===0){
-        btn.textContent='-- Select columns --';
-        document.querySelector('#'+selectId+' .multi-select-btn').classList.remove('has-selection');
-    }else{
-        var names=arr.map(function(i){return allColumns[i]}).join(', ');
-        btn.textContent=arr.length+' selected: '+names.substring(0,30)+(names.length>30?'...':'');
-        document.querySelector('#'+selectId+' .multi-select-btn').classList.add('has-selection');
-    }
-}
-
-function autoDetect(){
-    selectedCode=[];selectedDesc=[];selectedPrice=[];
-    var code=['code','item','sku','part','model','ef code'];
-    var desc=['desc','name','specification','title'];
-    var price=['price','cost','rate','reseller','standard','selling','amount'];
-    
-    allColumns.forEach(function(col,i){
-        var low=col.toLowerCase();
-        code.forEach(function(p){if(low.indexOf(p)!==-1&&selectedCode.indexOf(i)===-1){selectedCode.push(i);checkItem('codeDropdown',i)}});
-        desc.forEach(function(p){if(low.indexOf(p)!==-1&&selectedDesc.indexOf(i)===-1){selectedDesc.push(i);checkItem('descDropdown',i)}});
-        price.forEach(function(p){if(low.indexOf(p)!==-1&&selectedPrice.indexOf(i)===-1){selectedPrice.push(i);checkItem('priceDropdown',i)}});
-    });
-    
-    updateBtnText('codeSelect',selectedCode);
-    updateBtnText('descSelect',selectedDesc);
-    updateBtnText('priceSelect',selectedPrice);
-}
-
-function checkItem(dropdownId,idx){
-    var cb=document.querySelector('#'+dropdownId+' input[value="'+idx+'"]');
-    if(cb){cb.checked=true;cb.parentElement.classList.add('selected');}
-}
-
-function updateExample(){
-    var markup=parseFloat(document.getElementById('markupPercent').value)||45;
-    var cost=1000;
-    var selling=cost*(1+markup/100);
-    document.getElementById('exampleCost').textContent=cost.toFixed(2);
-    document.getElementById('exampleSelling').textContent=selling.toFixed(2);
-}
-
-function resetUpload(){
-    workbook=null;allSheetData=[];fileName='';allColumns=[];
-    selectedCode=[];selectedDesc=[];selectedPrice=[];
+function reset(){
+    wb=null;allData=[];fileName='';cols=[];selCode=[];selDesc=[];selPrice=[];
     document.getElementById('fileInput').value='';
     document.getElementById('vendorName').value='';
     document.getElementById('step1').classList.remove('hidden');
     document.getElementById('step2').classList.add('hidden');
     document.getElementById('step3').classList.add('hidden');
-    document.getElementById('statusBox').classList.add('hidden');
-    document.getElementById('importResults').classList.add('hidden');
+    document.getElementById('status').classList.add('hidden');
+    document.getElementById('results').classList.add('hidden');
 }
 
-function getVal(row,colNames){
-    var headers=row._headers;
-    var data=row._data;
-    for(var i=0;i<colNames.length;i++){
-        var idx=headers.indexOf(colNames[i]);
-        if(idx!==-1&&data[idx]!==undefined&&data[idx]!=='')return data[idx];
-    }
-    return '';
-}
+function gv(row,names){for(var i=0;i<names.length;i++){var x=row.h.indexOf(names[i]);if(x!==-1&&row.d[x]!==undefined&&row.d[x]!=='')return row.d[x];}return '';}
+function gn(row,names){for(var i=0;i<names.length;i++){var x=row.h.indexOf(names[i]);if(x!==-1){var v=row.d[x];if(v!==undefined&&v!==''){var n=parseFloat(String(v).replace(/[^0-9.-]/g,''));if(!isNaN(n)&&n>0)return n;}}}return 0;}
 
-function getNumVal(row,colNames){
-    var headers=row._headers;
-    var data=row._data;
-    for(var i=0;i<colNames.length;i++){
-        var idx=headers.indexOf(colNames[i]);
-        if(idx!==-1){
-            var v=data[idx];
-            if(v!==undefined&&v!==''){
-                var n=parseFloat(String(v).replace(/[^0-9.-]/g,''));
-                if(!isNaN(n)&&n>0)return n;
-            }
-        }
-    }
-    return 0;
-}
-
-async function startImport(){
-    var vendor=document.getElementById('vendorName').value.trim();
-    var markup=parseFloat(document.getElementById('markupPercent').value)||45;
-    
-    if(!vendor){alert('Enter vendor name');return;}
-    if(!selectedCode.length){alert('Select Product Code columns');return;}
-    if(!selectedPrice.length){alert('Select Price columns');return;}
-    
-    var codeNames=selectedCode.map(function(i){return allColumns[i]});
-    var descNames=selectedDesc.map(function(i){return allColumns[i]});
-    var priceNames=selectedPrice.map(function(i){return allColumns[i]});
+async function doImport(){
+    var vn=document.getElementById('vendorName').value.trim();
+    var mk=parseFloat(document.getElementById('markup').value)||45;
+    if(!vn){alert('Enter vendor name');return;}
+    if(!selCode.length){alert('Select Product Code columns');return;}
+    if(!selPrice.length){alert('Select Price columns');return;}
+    var cn=selCode.map(function(i){return cols[i];}),dn=selDesc.map(function(i){return cols[i];}),pn=selPrice.map(function(i){return cols[i];});
     
     document.getElementById('step2').classList.add('hidden');
     document.getElementById('step3').classList.remove('hidden');
+    var bar=document.getElementById('pbar'),txt=document.getElementById('ptxt');
+    var tot=allData.length,imp=0,skip=0;
+    txt.textContent='Creating price list...';bar.style.width='5%';
     
-    var bar=document.getElementById('progressBar');
-    var txt=document.getElementById('progressText');
-    var total=allSheetData.length,imported=0,skipped=0;
-    
-    txt.textContent='Creating price list...';
-    bar.style.width='5%';
-    
-    if(zohoReady){
-        try{
-            await ZOHO.CREATOR.API.addRecord({appName:"forbtech-pricelist-manager",formName:"Price_Lists",
-                data:{data:{File_Name:fileName,Vendor_Name:vendor,Upload_Date:new Date().toISOString().split('T')[0],Product_Count:total}}});
-        }catch(e){}
-    }
-    
+    if(zoho){try{await ZOHO.CREATOR.API.addRecord({appName:"forbtech-pricelist-manager",formName:"Price_Lists",data:{data:{File_Name:fileName,Vendor_Name:vn,Upload_Date:new Date().toISOString().split('T')[0],Product_Count:tot}}});}catch(e){}}
     bar.style.width='10%';
     
-    for(var i=0;i<total;i++){
-        var row=allSheetData[i];
-        var code=getVal(row,codeNames);
-        var price=getNumVal(row,priceNames);
-        var desc=descNames.length?getVal(row,descNames):'';
-        
-        if(!code||price===0){skipped++;continue;}
-        
-        var selling=Math.round(price*(1+markup/100)*100)/100;
-        
-        if(zohoReady){
-            try{
-                await ZOHO.CREATOR.API.addRecord({appName:"forbtech-pricelist-manager",formName:"Products",
-                    data:{data:{product_code:String(code),description:String(desc),cost_price:price,selling_price:selling,markup_percent:markup,vendor_name:vendor}}});
-                imported++;
-            }catch(e){skipped++;}
-        }else{imported++;}
-        
-        if(i%10===0||i===total-1){
-            bar.style.width=(10+90*(i+1)/total)+'%';
-            txt.textContent='Processing: '+(i+1)+'/'+total;
-        }
+    for(var i=0;i<tot;i++){
+        var r=allData[i],code=gv(r,cn),price=gn(r,pn),desc=dn.length?gv(r,dn):'';
+        if(!code||price===0){skip++;continue;}
+        var sell=Math.round(price*(1+mk/100)*100)/100;
+        if(zoho){try{await ZOHO.CREATOR.API.addRecord({appName:"forbtech-pricelist-manager",formName:"Products",data:{data:{product_code:String(code),description:String(desc),cost_price:price,selling_price:sell,markup_percent:mk,vendor_name:vn}}});imp++;}catch(e){skip++;}}
+        else{imp++;}
+        if(i%10===0||i===tot-1){bar.style.width=(10+90*(i+1)/tot)+'%';txt.textContent='Processing '+(i+1)+'/'+tot;}
     }
-    
-    document.getElementById('importTitle').textContent='✓ Import Complete!';
-    document.getElementById('totalImported').textContent=imported;
-    document.getElementById('totalSkipped').textContent=skipped;
-    document.getElementById('vendorDisplay').textContent=vendor;
-    document.getElementById('importResults').classList.remove('hidden');
-    bar.style.width='100%';
-    txt.textContent='Done!';
+    document.getElementById('title3').textContent='✓ Import Complete!';
+    document.getElementById('rImported').textContent=imp;
+    document.getElementById('rSkipped').textContent=skip;
+    document.getElementById('rVendor').textContent=vn;
+    document.getElementById('results').classList.remove('hidden');
+    bar.style.width='100%';txt.textContent='Done!';
 }
 </script>
 </body>
