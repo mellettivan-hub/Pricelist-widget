@@ -2,10 +2,9 @@
   "name": "PriceListUploader",
   "version": "1.0",
   "description": "Upload and process vendor Excel price lists with automatic markup calculation",
-  "icon": "icon.png",
   "default_height": "800px",
   "default_width": "100%",
   "files": {
-    "index": "widget.html"
+    "index": "index.html"
   }
 }
