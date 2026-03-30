@@ -4,1204 +4,429 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Price List Uploader</title>
-    
-    <!-- SheetJS for Excel parsing -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-    
-    <!-- Zoho Creator Widget SDK -->
     <script src="https://js.zohostatic.com/creator/widgets/version/2.0/widgetsdk-min.js"></script>
-    
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: #f5f7fa;
-            padding: 20px;
-            color: #333;
-        }
-        
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-        }
-        
-        .card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            padding: 24px;
-            margin-bottom: 20px;
-        }
-        
-        h1 {
-            font-size: 24px;
-            color: #1a1a2e;
-            margin-bottom: 8px;
-        }
-        
-        .subtitle {
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 20px;
-        }
-        
-        /* Upload Area */
-        .upload-area {
-            border: 2px dashed #d0d5dd;
-            border-radius: 12px;
-            padding: 40px;
-            text-align: center;
-            transition: all 0.3s ease;
-            background: #fafbfc;
-        }
-        
-        .upload-area.dragover {
-            border-color: #3b82f6;
-            background: #e8f2ff;
-        }
-        
-        .upload-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
-        }
-        
-        .upload-text {
-            font-size: 16px;
-            color: #333;
-            margin-bottom: 8px;
-        }
-        
-        .upload-hint {
-            font-size: 13px;
-            color: #888;
-            margin-bottom: 20px;
-        }
-        
-        /* Visible file input button */
-        .file-input-btn {
-            display: inline-block;
-            padding: 14px 32px;
-            background: #3b82f6;
-            color: white;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background 0.2s;
-            border: none;
-        }
-        
-        .file-input-btn:hover {
-            background: #2563eb;
-        }
-        
-        #fileInput {
-            display: none;
-        }
-        
-        /* Steps Indicator */
-        .steps {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 24px;
-            gap: 8px;
-        }
-        
-        .step {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 16px;
-            background: #f0f0f0;
-            border-radius: 20px;
-            font-size: 13px;
-            color: #666;
-        }
-        
-        .step.active {
-            background: #3b82f6;
-            color: white;
-        }
-        
-        .step.completed {
-            background: #10b981;
-            color: white;
-        }
-        
-        .step-number {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-        }
-        
-        /* Sheet Tabs */
-        .sheet-tabs {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 20px;
-        }
-        
-        .sheet-tab {
-            padding: 8px 16px;
-            background: #e8e8e8;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 13px;
-            transition: all 0.2s;
-        }
-        
-        .sheet-tab:hover {
-            background: #d0d0d0;
-        }
-        
-        .sheet-tab.active {
-            background: #3b82f6;
-            color: white;
-        }
-        
-        .sheet-tab .row-count {
-            font-size: 11px;
-            opacity: 0.8;
-            margin-left: 4px;
-        }
-        
-        /* Column Mapping */
-        .mapping-section {
-            margin-bottom: 24px;
-        }
-        
-        .mapping-title {
-            font-size: 16px;
-            font-weight: 600;
-            margin-bottom: 16px;
-            color: #1a1a2e;
-        }
-        
-        .mapping-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-        }
-        
-        .mapping-item {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        
-        .mapping-item label {
-            font-size: 13px;
-            font-weight: 500;
-            color: #444;
-        }
-        
-        .mapping-item label .required {
-            color: #ef4444;
-        }
-        
-        .mapping-item select {
-            padding: 10px 12px;
-            border: 1px solid #d0d5dd;
-            border-radius: 8px;
-            font-size: 14px;
-            background: white;
-            cursor: pointer;
-        }
-        
-        .mapping-item select:focus {
-            outline: none;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-        
-        /* Vendor Selection */
-        .vendor-section {
-            margin-bottom: 24px;
-            padding: 16px;
-            background: #f8fafc;
-            border-radius: 8px;
-        }
-        
-        .vendor-section label {
-            display: block;
-            font-size: 14px;
-            font-weight: 500;
-            margin-bottom: 8px;
-        }
-        
-        .vendor-section input,
-        .vendor-section select {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #d0d5dd;
-            border-radius: 8px;
-            font-size: 14px;
-        }
-        
-        /* Markup Section */
-        .markup-section {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 16px;
-            background: #fef3c7;
-            border-radius: 8px;
-            margin-bottom: 24px;
-            flex-wrap: wrap;
-        }
-        
-        .markup-section label {
-            font-size: 14px;
-            font-weight: 500;
-        }
-        
-        .markup-section input {
-            width: 80px;
-            padding: 8px 12px;
-            border: 1px solid #d0d5dd;
-            border-radius: 8px;
-            font-size: 14px;
-            text-align: center;
-        }
-        
-        .markup-info {
-            font-size: 13px;
-            color: #666;
-        }
-        
-        /* Preview Table */
-        .preview-section {
-            margin-bottom: 24px;
-        }
-        
-        .preview-title {
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 12px;
-            color: #666;
-        }
-        
-        .preview-table-wrapper {
-            max-height: 300px;
-            overflow: auto;
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-        }
-        
-        .preview-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-        
-        .preview-table th {
-            background: #f8fafc;
-            padding: 10px 12px;
-            text-align: left;
-            font-weight: 600;
-            border-bottom: 1px solid #e5e7eb;
-            position: sticky;
-            top: 0;
-        }
-        
-        .preview-table td {
-            padding: 10px 12px;
-            border-bottom: 1px solid #f0f0f0;
-        }
-        
-        .preview-table tr:hover {
-            background: #f8fafc;
-        }
-        
-        /* Buttons */
-        .button-group {
-            display: flex;
-            gap: 12px;
-            justify-content: flex-end;
-        }
-        
-        .btn {
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: none;
-        }
-        
-        .btn-secondary {
-            background: #e5e7eb;
-            color: #333;
-        }
-        
-        .btn-secondary:hover {
-            background: #d1d5db;
-        }
-        
-        .btn-primary {
-            background: #3b82f6;
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background: #2563eb;
-        }
-        
-        .btn-success {
-            background: #10b981;
-            color: white;
-        }
-        
-        .btn-success:hover {
-            background: #059669;
-        }
-        
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        /* Progress */
-        .progress-section {
-            margin-bottom: 24px;
-        }
-        
-        .progress-bar-wrapper {
-            height: 8px;
-            background: #e5e7eb;
-            border-radius: 4px;
-            overflow: hidden;
-            margin-bottom: 8px;
-        }
-        
-        .progress-bar {
-            height: 100%;
-            background: #3b82f6;
-            border-radius: 4px;
-            transition: width 0.3s ease;
-        }
-        
-        .progress-text {
-            font-size: 13px;
-            color: #666;
-            text-align: center;
-        }
-        
-        /* Messages */
-        .message {
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin-bottom: 16px;
-            font-size: 14px;
-        }
-        
-        .message.success {
-            background: #d1fae5;
-            color: #065f46;
-        }
-        
-        .message.error {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-        
-        .message.info {
-            background: #dbeafe;
-            color: #1e40af;
-        }
-        
-        /* Hidden */
-        .hidden {
-            display: none !important;
-        }
-        
-        /* Summary */
-        .summary-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 16px;
-            margin-bottom: 24px;
-        }
-        
-        .stat-card {
-            text-align: center;
-            padding: 16px;
-            background: #f8fafc;
-            border-radius: 8px;
-        }
-        
-        .stat-value {
-            font-size: 24px;
-            font-weight: 700;
-            color: #3b82f6;
-            word-break: break-all;
-        }
-        
-        .stat-label {
-            font-size: 13px;
-            color: #666;
-            margin-top: 4px;
-        }
-        
-        /* Loading indicator */
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #3b82f6;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 10px;
-            vertical-align: middle;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .status-message {
-            margin-top: 16px;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 14px;
-        }
-        
-        .status-message.loading {
-            background: #e0f2fe;
-            color: #0369a1;
-            width: auto;
-            height: auto;
-            border: none;
-            animation: none;
-            display: block;
-        }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f5f7fa;padding:20px;color:#333}
+        .container{max-width:900px;margin:0 auto}
+        .card{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:24px;margin-bottom:20px}
+        h1{font-size:24px;color:#1a1a2e;margin-bottom:8px}
+        .subtitle{color:#666;font-size:14px;margin-bottom:20px}
+        .upload-area{border:2px dashed #d0d5dd;border-radius:12px;padding:40px;text-align:center;background:#fafbfc}
+        .upload-icon{font-size:48px;margin-bottom:16px}
+        .upload-text{font-size:16px;color:#333;margin-bottom:8px}
+        .upload-hint{font-size:13px;color:#888;margin-bottom:20px}
+        
+        /* VISIBLE FILE INPUT STYLED AS BUTTON */
+        .file-input-label{
+            display:inline-block;
+            padding:16px 40px;
+            background:#3b82f6;
+            color:#fff;
+            border-radius:8px;
+            font-size:18px;
+            font-weight:600;
+            cursor:pointer;
+            transition:background .2s;
+            margin-top:10px;
+        }
+        .file-input-label:hover{background:#2563eb}
+        .file-input-label input[type="file"]{
+            position:absolute;
+            width:1px;
+            height:1px;
+            padding:0;
+            margin:-1px;
+            overflow:hidden;
+            clip:rect(0,0,0,0);
+            border:0;
+        }
+        
+        .steps{display:flex;justify-content:center;margin-bottom:24px;gap:8px}
+        .step{display:flex;align-items:center;gap:8px;padding:8px 16px;background:#f0f0f0;border-radius:20px;font-size:13px;color:#666}
+        .step.active{background:#3b82f6;color:#fff}
+        .step.completed{background:#10b981;color:#fff}
+        .step-number{width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-weight:600}
+        .sheet-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+        .sheet-tab{padding:8px 16px;background:#e8e8e8;border:none;border-radius:8px;cursor:pointer;font-size:13px}
+        .sheet-tab:hover{background:#d0d0d0}
+        .sheet-tab.active{background:#3b82f6;color:#fff}
+        .mapping-section{margin-bottom:24px}
+        .mapping-title{font-size:16px;font-weight:600;margin-bottom:16px;color:#1a1a2e}
+        .mapping-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
+        .mapping-item{display:flex;flex-direction:column;gap:6px}
+        .mapping-item label{font-size:13px;font-weight:500;color:#444}
+        .mapping-item .required{color:#ef4444}
+        .mapping-item select{padding:10px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:14px;background:#fff}
+        .vendor-section{margin-bottom:24px;padding:16px;background:#f8fafc;border-radius:8px}
+        .vendor-section label{display:block;font-size:14px;font-weight:500;margin-bottom:8px}
+        .vendor-section input{width:100%;padding:10px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:14px}
+        .markup-section{display:flex;align-items:center;gap:12px;padding:16px;background:#fef3c7;border-radius:8px;margin-bottom:24px;flex-wrap:wrap}
+        .markup-section label{font-size:14px;font-weight:500}
+        .markup-section input{width:80px;padding:8px 12px;border:1px solid #d0d5dd;border-radius:8px;font-size:14px;text-align:center}
+        .markup-info{font-size:13px;color:#666}
+        .preview-section{margin-bottom:24px}
+        .preview-title{font-size:14px;font-weight:600;margin-bottom:12px;color:#666}
+        .preview-table-wrapper{max-height:250px;overflow:auto;border:1px solid #e5e7eb;border-radius:8px}
+        .preview-table{width:100%;border-collapse:collapse;font-size:12px}
+        .preview-table th{background:#f8fafc;padding:8px;text-align:left;font-weight:600;border-bottom:1px solid #e5e7eb;position:sticky;top:0}
+        .preview-table td{padding:8px;border-bottom:1px solid #f0f0f0}
+        .button-group{display:flex;gap:12px;justify-content:flex-end}
+        .btn{padding:12px 24px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;border:none}
+        .btn-secondary{background:#e5e7eb;color:#333}
+        .btn-secondary:hover{background:#d1d5db}
+        .btn-primary{background:#3b82f6;color:#fff}
+        .btn-primary:hover{background:#2563eb}
+        .btn-success{background:#10b981;color:#fff}
+        .btn-success:hover{background:#059669}
+        .progress-section{margin-bottom:24px}
+        .progress-bar-wrapper{height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden;margin-bottom:8px}
+        .progress-bar{height:100%;background:#3b82f6;border-radius:4px;transition:width .3s}
+        .progress-text{font-size:13px;color:#666;text-align:center}
+        .message{padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:14px}
+        .message.info{background:#dbeafe;color:#1e40af}
+        .hidden{display:none!important}
+        .summary-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px;margin-bottom:24px}
+        .stat-card{text-align:center;padding:16px;background:#f8fafc;border-radius:8px}
+        .stat-value{font-size:24px;font-weight:700;color:#3b82f6}
+        .stat-label{font-size:13px;color:#666;margin-top:4px}
+        .status-box{margin-top:20px;padding:15px;border-radius:8px;text-align:center}
+        .status-box.loading{background:#e0f2fe;color:#0369a1}
+        .status-box.success{background:#d1fae5;color:#065f46}
+        .status-box.error{background:#fee2e2;color:#991b1b}
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Step 1: Upload -->
         <div id="step1" class="card">
             <div class="steps">
-                <div class="step active">
-                    <span class="step-number">1</span>
-                    <span>Upload</span>
-                </div>
-                <div class="step">
-                    <span class="step-number">2</span>
-                    <span>Map Columns</span>
-                </div>
-                <div class="step">
-                    <span class="step-number">3</span>
-                    <span>Import</span>
-                </div>
+                <div class="step active"><span class="step-number">1</span><span>Upload</span></div>
+                <div class="step"><span class="step-number">2</span><span>Map Columns</span></div>
+                <div class="step"><span class="step-number">3</span><span>Import</span></div>
             </div>
-            
             <h1>Upload Price List</h1>
             <p class="subtitle">Upload your vendor Excel file to import products</p>
-            
-            <div class="upload-area" id="uploadArea">
+            <div class="upload-area">
                 <div class="upload-icon">📁</div>
-                <div class="upload-text">Select your Excel file to upload</div>
+                <div class="upload-text">Click the button below to select your Excel file</div>
                 <div class="upload-hint">Supports .xlsx, .xls, .csv files</div>
-                
-                <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none;">
-                <button type="button" class="file-input-btn" id="chooseFileBtn">Choose Excel File</button>
+                <label class="file-input-label">
+                    📂 SELECT EXCEL FILE
+                    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="handleFileSelect(this)">
+                </label>
             </div>
-            
-            <div id="statusMessage" class="status-message hidden"></div>
+            <div id="statusBox" class="status-box hidden"></div>
         </div>
-        
-        <!-- Step 2: Map Columns -->
+
         <div id="step2" class="card hidden">
             <div class="steps">
-                <div class="step completed">
-                    <span class="step-number">✓</span>
-                    <span>Upload</span>
-                </div>
-                <div class="step active">
-                    <span class="step-number">2</span>
-                    <span>Map Columns</span>
-                </div>
-                <div class="step">
-                    <span class="step-number">3</span>
-                    <span>Import</span>
-                </div>
+                <div class="step completed"><span class="step-number">✓</span><span>Upload</span></div>
+                <div class="step active"><span class="step-number">2</span><span>Map Columns</span></div>
+                <div class="step"><span class="step-number">3</span><span>Import</span></div>
             </div>
-            
             <h1>Map Your Columns</h1>
             <p class="subtitle">Select which columns contain your product data</p>
-            
             <div id="fileInfo" class="message info"></div>
-            
-            <!-- Sheet Selection -->
             <div class="mapping-section">
                 <div class="mapping-title">Select Sheet to Import</div>
                 <div class="sheet-tabs" id="sheetTabs"></div>
             </div>
-            
-            <!-- Vendor Selection -->
             <div class="vendor-section">
-                <label for="vendorName">Vendor Name <span class="required">*</span></label>
+                <label>Vendor Name <span class="required">*</span></label>
                 <input type="text" id="vendorName" placeholder="Enter vendor name (e.g., HIKVISION SA)">
             </div>
-            
-            <!-- Markup -->
             <div class="markup-section">
-                <label for="markupPercent">Markup Percentage:</label>
+                <label>Markup %:</label>
                 <input type="number" id="markupPercent" value="45" min="0" max="500">
-                <span class="markup-info">% (Cost Price × 1.45 = Selling Price)</span>
+                <span class="markup-info">(Cost × 1.45 = Selling Price)</span>
             </div>
-            
-            <!-- Column Mapping -->
             <div class="mapping-section">
                 <div class="mapping-title">Map Columns</div>
                 <div class="mapping-grid">
                     <div class="mapping-item">
-                        <label>Product Code Column <span class="required">*</span></label>
-                        <select id="productCodeCol">
-                            <option value="">-- Select --</option>
-                        </select>
+                        <label>Product Code <span class="required">*</span></label>
+                        <select id="productCodeCol"><option value="">-- Select --</option></select>
                     </div>
                     <div class="mapping-item">
-                        <label>Description Column</label>
-                        <select id="descriptionCol">
-                            <option value="">-- Select --</option>
-                        </select>
+                        <label>Description</label>
+                        <select id="descriptionCol"><option value="">-- Select --</option></select>
                     </div>
                     <div class="mapping-item">
-                        <label>Price Column <span class="required">*</span></label>
-                        <select id="priceCol">
-                            <option value="">-- Select --</option>
-                        </select>
+                        <label>Price <span class="required">*</span></label>
+                        <select id="priceCol"><option value="">-- Select --</option></select>
                     </div>
                     <div class="mapping-item">
-                        <label>Category Column</label>
-                        <select id="categoryCol">
-                            <option value="">-- Select --</option>
-                        </select>
+                        <label>Category</label>
+                        <select id="categoryCol"><option value="">-- Select --</option></select>
                     </div>
                 </div>
             </div>
-            
-            <!-- Preview -->
             <div class="preview-section">
                 <div class="preview-title">Data Preview (First 10 rows)</div>
                 <div class="preview-table-wrapper">
-                    <table class="preview-table" id="previewTable">
-                        <thead id="previewHead"></thead>
-                        <tbody id="previewBody"></tbody>
-                    </table>
+                    <table class="preview-table"><thead id="previewHead"></thead><tbody id="previewBody"></tbody></table>
                 </div>
             </div>
-            
             <div class="button-group">
-                <button class="btn btn-secondary" id="backBtn">Back</button>
-                <button class="btn btn-primary" id="importBtn">Import Products</button>
+                <button class="btn btn-secondary" onclick="resetUpload()">Back</button>
+                <button class="btn btn-primary" onclick="startImport()">Import Products</button>
             </div>
         </div>
-        
-        <!-- Step 3: Import Progress -->
+
         <div id="step3" class="card hidden">
             <div class="steps">
-                <div class="step completed">
-                    <span class="step-number">✓</span>
-                    <span>Upload</span>
-                </div>
-                <div class="step completed">
-                    <span class="step-number">✓</span>
-                    <span>Map Columns</span>
-                </div>
-                <div class="step active">
-                    <span class="step-number">3</span>
-                    <span>Import</span>
-                </div>
+                <div class="step completed"><span class="step-number">✓</span><span>Upload</span></div>
+                <div class="step completed"><span class="step-number">✓</span><span>Map Columns</span></div>
+                <div class="step active"><span class="step-number">3</span><span>Import</span></div>
             </div>
-            
             <h1 id="importTitle">Importing Products...</h1>
             <p class="subtitle" id="importSubtitle">Please wait while we process your data</p>
-            
             <div class="progress-section">
-                <div class="progress-bar-wrapper">
-                    <div class="progress-bar" id="progressBar" style="width: 0%"></div>
-                </div>
+                <div class="progress-bar-wrapper"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
                 <div class="progress-text" id="progressText">Preparing...</div>
             </div>
-            
             <div id="importResults" class="hidden">
                 <div class="summary-stats">
-                    <div class="stat-card">
-                        <div class="stat-value" id="totalProducts">0</div>
-                        <div class="stat-label">Products Imported</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="priceListName">-</div>
-                        <div class="stat-label">Price List Created</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="vendorDisplay">-</div>
-                        <div class="stat-label">Vendor</div>
-                    </div>
+                    <div class="stat-card"><div class="stat-value" id="totalProducts">0</div><div class="stat-label">Products Imported</div></div>
+                    <div class="stat-card"><div class="stat-value" id="vendorDisplay">-</div><div class="stat-label">Vendor</div></div>
                 </div>
-                
                 <div class="button-group">
-                    <button class="btn btn-success" id="uploadAnotherBtn">Upload Another File</button>
+                    <button class="btn btn-success" onclick="resetUpload()">Upload Another File</button>
                 </div>
             </div>
         </div>
     </div>
+
+<script>
+var workbook=null,currentSheetData=[],fileName='',allColumns=[],zohoReady=false;
+
+// Initialize Zoho
+if(typeof ZOHO!=='undefined'&&ZOHO.CREATOR){
+    ZOHO.CREATOR.init().then(function(){zohoReady=true;console.log('Zoho ready')}).catch(function(e){console.log('Zoho init error',e)});
+}
+
+function showStatus(msg,type){
+    var box=document.getElementById('statusBox');
+    box.className='status-box '+type;
+    box.textContent=msg;
+    box.classList.remove('hidden');
+}
+
+function handleFileSelect(input){
+    var files=input.files;
+    if(!files||files.length===0){
+        showStatus('No file selected','error');
+        return;
+    }
+    var file=files[0];
+    fileName=file.name;
+    showStatus('Reading: '+fileName+'...','loading');
     
-    <script>
-        // Global variables
-        var workbook = null;
-        var currentSheetData = [];
-        var selectedSheets = [];
-        var fileName = '';
-        var allColumns = [];
-        var zohoInitialized = false;
-        
-        // Wait for page to fully load
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Page loaded, initializing...');
-            
-            // Initialize Zoho SDK
-            if (typeof ZOHO !== 'undefined' && ZOHO.CREATOR) {
-                ZOHO.CREATOR.init()
-                    .then(function() {
-                        console.log("Zoho Creator Widget SDK initialized");
-                        zohoInitialized = true;
-                    })
-                    .catch(function(error) {
-                        console.error("SDK initialization failed:", error);
-                    });
-            } else {
-                console.log("Running outside Zoho Creator");
+    var reader=new FileReader();
+    reader.onload=function(e){
+        try{
+            if(typeof XLSX==='undefined'){
+                showStatus('Error: XLSX library not loaded. Refresh page.','error');
+                return;
             }
-            
-            // Set up event listeners
-            setupEventListeners();
+            var data=new Uint8Array(e.target.result);
+            workbook=XLSX.read(data,{type:'array'});
+            if(!workbook.SheetNames||workbook.SheetNames.length===0){
+                showStatus('No sheets found in file','error');
+                return;
+            }
+            document.getElementById('step1').classList.add('hidden');
+            document.getElementById('step2').classList.remove('hidden');
+            document.getElementById('fileInfo').textContent='File: '+fileName+' | Sheets: '+workbook.SheetNames.length;
+            createSheetTabs();
+            selectSheet(workbook.SheetNames[0]);
+        }catch(err){
+            showStatus('Error: '+err.message,'error');
+        }
+    };
+    reader.onerror=function(){showStatus('Failed to read file','error')};
+    reader.readAsArrayBuffer(file);
+}
+
+function createSheetTabs(){
+    var container=document.getElementById('sheetTabs');
+    container.innerHTML='';
+    workbook.SheetNames.forEach(function(name){
+        var sheet=workbook.Sheets[name];
+        var range=XLSX.utils.decode_range(sheet['!ref']||'A1');
+        var rows=range.e.r-range.s.r;
+        var btn=document.createElement('button');
+        btn.type='button';
+        btn.className='sheet-tab';
+        btn.textContent=name+' ('+rows+' rows)';
+        btn.onclick=function(){selectSheet(name)};
+        btn.setAttribute('data-name',name);
+        container.appendChild(btn);
+    });
+}
+
+function selectSheet(name){
+    document.querySelectorAll('.sheet-tab').forEach(function(t){
+        t.classList.toggle('active',t.getAttribute('data-name')===name);
+    });
+    var sheet=workbook.Sheets[name];
+    var json=XLSX.utils.sheet_to_json(sheet,{header:1,defval:''});
+    var headerIdx=0;
+    for(var i=0;i<Math.min(15,json.length);i++){
+        var cnt=0;
+        for(var j=0;j<json[i].length;j++)if(json[i][j]!=='')cnt++;
+        if(cnt>=3){headerIdx=i;break;}
+    }
+    allColumns=json[headerIdx]||[];
+    currentSheetData=[];
+    for(var k=headerIdx+1;k<json.length;k++){
+        var hasData=false;
+        for(var l=0;l<json[k].length;l++)if(json[k][l]!==''){hasData=true;break;}
+        if(hasData)currentSheetData.push(json[k]);
+    }
+    populateDropdowns();
+    showPreview();
+    autoDetect();
+}
+
+function populateDropdowns(){
+    ['productCodeCol','descriptionCol','priceCol','categoryCol'].forEach(function(id){
+        var sel=document.getElementById(id);
+        sel.innerHTML='<option value="">-- Select --</option>';
+        allColumns.forEach(function(c,i){
+            if(c!==''){
+                var opt=document.createElement('option');
+                opt.value=i;
+                opt.textContent=String(c).substring(0,50);
+                sel.appendChild(opt);
+            }
         });
+    });
+}
+
+function autoDetect(){
+    var code=['code','item','sku','part','model','ef code'];
+    var desc=['desc','name','product','title','spec'];
+    var price=['price','cost','amount','rate','reseller'];
+    var cat=['category','type','group','series'];
+    allColumns.forEach(function(c,i){
+        if(!c)return;
+        var low=String(c).toLowerCase();
+        code.forEach(function(p){if(low.indexOf(p)!==-1&&!document.getElementById('productCodeCol').value)document.getElementById('productCodeCol').value=i});
+        desc.forEach(function(p){if(low.indexOf(p)!==-1&&!document.getElementById('descriptionCol').value)document.getElementById('descriptionCol').value=i});
+        price.forEach(function(p){if(low.indexOf(p)!==-1&&!document.getElementById('priceCol').value)document.getElementById('priceCol').value=i});
+        cat.forEach(function(p){if(low.indexOf(p)!==-1&&!document.getElementById('categoryCol').value)document.getElementById('categoryCol').value=i});
+    });
+}
+
+function showPreview(){
+    var head='<tr>';
+    allColumns.forEach(function(c){head+='<th>'+(c||'-')+'</th>'});
+    head+='</tr>';
+    document.getElementById('previewHead').innerHTML=head;
+    var body='';
+    currentSheetData.slice(0,10).forEach(function(row){
+        body+='<tr>';
+        for(var i=0;i<allColumns.length;i++)body+='<td>'+(row[i]!==undefined?row[i]:'')+'</td>';
+        body+='</tr>';
+    });
+    document.getElementById('previewBody').innerHTML=body;
+}
+
+function resetUpload(){
+    workbook=null;currentSheetData=[];fileName='';allColumns=[];
+    document.getElementById('fileInput').value='';
+    document.getElementById('vendorName').value='';
+    document.getElementById('step1').classList.remove('hidden');
+    document.getElementById('step2').classList.add('hidden');
+    document.getElementById('step3').classList.add('hidden');
+    document.getElementById('statusBox').classList.add('hidden');
+    document.getElementById('importResults').classList.add('hidden');
+}
+
+async function startImport(){
+    var vendor=document.getElementById('vendorName').value.trim();
+    var codeIdx=document.getElementById('productCodeCol').value;
+    var priceIdx=document.getElementById('priceCol').value;
+    var descIdx=document.getElementById('descriptionCol').value;
+    var catIdx=document.getElementById('categoryCol').value;
+    var markup=parseFloat(document.getElementById('markupPercent').value)||45;
+    
+    if(!vendor){alert('Enter vendor name');return;}
+    if(codeIdx===''){alert('Select Product Code column');return;}
+    if(priceIdx===''){alert('Select Price column');return;}
+    
+    codeIdx=parseInt(codeIdx);
+    priceIdx=parseInt(priceIdx);
+    if(descIdx!=='')descIdx=parseInt(descIdx);
+    if(catIdx!=='')catIdx=parseInt(catIdx);
+    
+    document.getElementById('step2').classList.add('hidden');
+    document.getElementById('step3').classList.remove('hidden');
+    
+    var bar=document.getElementById('progressBar');
+    var txt=document.getElementById('progressText');
+    var imported=0,errors=0,total=currentSheetData.length;
+    
+    txt.textContent='Creating price list...';
+    bar.style.width='5%';
+    
+    // Create price list
+    if(zohoReady){
+        try{
+            await ZOHO.CREATOR.API.addRecord({
+                appName:"forbtech-pricelist-manager",
+                formName:"Price_Lists",
+                data:{data:{File_Name:fileName,Vendor_Name:vendor,Upload_Date:new Date().toISOString().split('T')[0],Product_Count:total}}
+            });
+        }catch(e){console.log('Price list error',e)}
+    }
+    
+    bar.style.width='10%';
+    txt.textContent='Importing: 0/'+total;
+    
+    for(var i=0;i<total;i++){
+        var row=currentSheetData[i];
+        var code=row[codeIdx];
+        var priceVal=parseFloat(String(row[priceIdx]).replace(/[^0-9.-]/g,''))||0;
         
-        function setupEventListeners() {
-            var fileInput = document.getElementById('fileInput');
-            var chooseFileBtn = document.getElementById('chooseFileBtn');
-            var uploadArea = document.getElementById('uploadArea');
-            var backBtn = document.getElementById('backBtn');
-            var importBtn = document.getElementById('importBtn');
-            var uploadAnotherBtn = document.getElementById('uploadAnotherBtn');
-            
-            // Choose file button click
-            chooseFileBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Choose file button clicked');
-                fileInput.click();
-            });
-            
-            // File input change
-            fileInput.addEventListener('change', function(e) {
-                console.log('File input changed');
-                var files = e.target.files;
-                if (files && files.length > 0) {
-                    var file = files[0];
-                    console.log('File selected:', file.name, 'Size:', file.size);
-                    showStatus('Reading file: ' + file.name + '...', 'loading');
-                    processFile(file);
-                }
-            });
-            
-            // Drag and drop
-            uploadArea.addEventListener('dragover', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                uploadArea.classList.add('dragover');
-            });
-            
-            uploadArea.addEventListener('dragleave', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                uploadArea.classList.remove('dragover');
-            });
-            
-            uploadArea.addEventListener('drop', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                uploadArea.classList.remove('dragover');
-                var files = e.dataTransfer.files;
-                if (files && files.length > 0) {
-                    showStatus('Reading file: ' + files[0].name + '...', 'loading');
-                    processFile(files[0]);
-                }
-            });
-            
-            // Back button
-            backBtn.addEventListener('click', function() {
-                resetUpload();
-            });
-            
-            // Import button
-            importBtn.addEventListener('click', function() {
-                startImport();
-            });
-            
-            // Upload another button
-            uploadAnotherBtn.addEventListener('click', function() {
-                resetUpload();
-            });
+        if(!code||priceVal===0){errors++;continue;}
+        
+        var selling=Math.round(priceVal*(1+markup/100)*100)/100;
+        var prod={
+            product_code:String(code),
+            description:descIdx!==''?String(row[descIdx]||''):'',
+            cost_price:priceVal,
+            selling_price:selling,
+            markup_percent:markup,
+            vendor_name:vendor,
+            category:catIdx!==''?String(row[catIdx]||''):''
+        };
+        
+        if(zohoReady){
+            try{
+                await ZOHO.CREATOR.API.addRecord({appName:"forbtech-pricelist-manager",formName:"Products",data:{data:prod}});
+                imported++;
+            }catch(e){errors++;}
+        }else{
+            imported++;
         }
         
-        function showStatus(message, type) {
-            var statusEl = document.getElementById('statusMessage');
-            statusEl.classList.remove('hidden', 'loading', 'success', 'error', 'info');
-            
-            if (type === 'loading') {
-                statusEl.innerHTML = '<span class="loading"></span>' + message;
-                statusEl.style.background = '#e0f2fe';
-                statusEl.style.color = '#0369a1';
-            } else if (type === 'success') {
-                statusEl.innerHTML = '✓ ' + message;
-                statusEl.style.background = '#d1fae5';
-                statusEl.style.color = '#065f46';
-            } else if (type === 'error') {
-                statusEl.innerHTML = '✗ ' + message;
-                statusEl.style.background = '#fee2e2';
-                statusEl.style.color = '#991b1b';
-            } else {
-                statusEl.innerHTML = message;
-                statusEl.style.background = '#dbeafe';
-                statusEl.style.color = '#1e40af';
-            }
+        if(i%5===0||i===total-1){
+            bar.style.width=(10+90*(i+1)/total)+'%';
+            txt.textContent='Importing: '+imported+'/'+total;
         }
-        
-        function hideStatus() {
-            document.getElementById('statusMessage').classList.add('hidden');
-        }
-        
-        // Process uploaded file
-        function processFile(file) {
-            fileName = file.name;
-            console.log('Processing file:', fileName);
-            
-            var reader = new FileReader();
-            
-            reader.onload = function(e) {
-                console.log('FileReader onload triggered');
-                try {
-                    var data = new Uint8Array(e.target.result);
-                    console.log('File data size:', data.length);
-                    
-                    // Check if XLSX is loaded
-                    if (typeof XLSX === 'undefined') {
-                        showStatus('Error: Excel parser not loaded. Please refresh the page.', 'error');
-                        return;
-                    }
-                    
-                    workbook = XLSX.read(data, { type: 'array' });
-                    console.log('Workbook parsed, sheets:', workbook.SheetNames);
-                    
-                    if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
-                        showStatus('Error: No sheets found in the file.', 'error');
-                        return;
-                    }
-                    
-                    // Show step 2
-                    document.getElementById('step1').classList.add('hidden');
-                    document.getElementById('step2').classList.remove('hidden');
-                    hideStatus();
-                    
-                    // Display file info
-                    document.getElementById('fileInfo').textContent = 
-                        'File: ' + fileName + ' | Sheets found: ' + workbook.SheetNames.length;
-                    
-                    // Create sheet tabs
-                    createSheetTabs();
-                    
-                    // Select first sheet by default
-                    selectSheet(workbook.SheetNames[0]);
-                    
-                } catch (error) {
-                    console.error('Error parsing file:', error);
-                    showStatus('Error reading file: ' + error.message, 'error');
-                }
-            };
-            
-            reader.onerror = function(error) {
-                console.error('FileReader error:', error);
-                showStatus('Error reading file. Please try again.', 'error');
-            };
-            
-            reader.readAsArrayBuffer(file);
-        }
-        
-        // Create sheet tabs
-        function createSheetTabs() {
-            var tabsContainer = document.getElementById('sheetTabs');
-            tabsContainer.innerHTML = '';
-            selectedSheets = [];
-            
-            workbook.SheetNames.forEach(function(name) {
-                var sheet = workbook.Sheets[name];
-                var ref = sheet['!ref'] || 'A1';
-                var range = XLSX.utils.decode_range(ref);
-                var rowCount = Math.max(0, range.e.r - range.s.r);
-                
-                var tab = document.createElement('button');
-                tab.type = 'button';
-                tab.className = 'sheet-tab';
-                tab.innerHTML = name + ' <span class="row-count">(' + rowCount + ' rows)</span>';
-                tab.setAttribute('data-sheet', name);
-                tab.addEventListener('click', function() {
-                    selectSheet(name);
-                });
-                tabsContainer.appendChild(tab);
-            });
-        }
-        
-        // Select sheet
-        function selectSheet(sheetName) {
-            console.log('Selecting sheet:', sheetName);
-            
-            // Update tab styles
-            var tabs = document.querySelectorAll('.sheet-tab');
-            tabs.forEach(function(tab) {
-                if (tab.getAttribute('data-sheet') === sheetName) {
-                    tab.classList.add('active');
-                } else {
-                    tab.classList.remove('active');
-                }
-            });
-            
-            // Track selected sheet
-            selectedSheets = [sheetName];
-            
-            // Parse sheet data
-            var sheet = workbook.Sheets[sheetName];
-            var jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-            
-            console.log('Sheet data rows:', jsonData.length);
-            
-            // Find header row (first row with multiple non-empty cells)
-            var headerRowIndex = 0;
-            for (var i = 0; i < Math.min(15, jsonData.length); i++) {
-                var row = jsonData[i];
-                var nonEmptyCells = 0;
-                for (var j = 0; j < row.length; j++) {
-                    if (row[j] !== '' && row[j] !== null && row[j] !== undefined) {
-                        nonEmptyCells++;
-                    }
-                }
-                if (nonEmptyCells >= 3) {
-                    headerRowIndex = i;
-                    break;
-                }
-            }
-            
-            console.log('Header row index:', headerRowIndex);
-            
-            // Extract columns
-            allColumns = jsonData[headerRowIndex] || [];
-            
-            // Get data rows (skip empty rows)
-            currentSheetData = [];
-            for (var k = headerRowIndex + 1; k < jsonData.length; k++) {
-                var dataRow = jsonData[k];
-                var hasContent = false;
-                for (var l = 0; l < dataRow.length; l++) {
-                    if (dataRow[l] !== '' && dataRow[l] !== null && dataRow[l] !== undefined) {
-                        hasContent = true;
-                        break;
-                    }
-                }
-                if (hasContent) {
-                    currentSheetData.push(dataRow);
-                }
-            }
-            
-            console.log('Data rows:', currentSheetData.length);
-            console.log('Columns:', allColumns);
-            
-            // Populate column dropdowns
-            populateColumnDropdowns();
-            
-            // Show preview
-            showPreview();
-            
-            // Auto-detect columns
-            autoDetectColumns();
-        }
-        
-        // Populate dropdowns
-        function populateColumnDropdowns() {
-            var dropdownIds = ['productCodeCol', 'descriptionCol', 'priceCol', 'categoryCol'];
-            
-            dropdownIds.forEach(function(id) {
-                var select = document.getElementById(id);
-                select.innerHTML = '<option value="">-- Select --</option>';
-                
-                allColumns.forEach(function(col, index) {
-                    if (col !== '' && col !== null && col !== undefined) {
-                        var option = document.createElement('option');
-                        option.value = index;
-                        option.textContent = String(col).substring(0, 50);
-                        select.appendChild(option);
-                    }
-                });
-            });
-        }
-        
-        // Auto-detect columns based on common names
-        function autoDetectColumns() {
-            var codePatterns = ['code', 'item', 'sku', 'part', 'model', 'product code', 'item code', 'ef code'];
-            var descPatterns = ['desc', 'name', 'product', 'title', 'specification', 'model desc'];
-            var pricePatterns = ['price', 'cost', 'amount', 'value', 'rate', 'standard', 'reseller'];
-            var categoryPatterns = ['category', 'type', 'group', 'class', 'series'];
-            
-            allColumns.forEach(function(col, index) {
-                if (!col) return;
-                var colLower = String(col).toLowerCase();
-                
-                var productCodeSelect = document.getElementById('productCodeCol');
-                var descSelect = document.getElementById('descriptionCol');
-                var priceSelect = document.getElementById('priceCol');
-                var categorySelect = document.getElementById('categoryCol');
-                
-                codePatterns.forEach(function(p) {
-                    if (colLower.indexOf(p) !== -1 && !productCodeSelect.value) {
-                        productCodeSelect.value = index;
-                    }
-                });
-                
-                descPatterns.forEach(function(p) {
-                    if (colLower.indexOf(p) !== -1 && !descSelect.value) {
-                        descSelect.value = index;
-                    }
-                });
-                
-                pricePatterns.forEach(function(p) {
-                    if (colLower.indexOf(p) !== -1 && !priceSelect.value) {
-                        priceSelect.value = index;
-                    }
-                });
-                
-                categoryPatterns.forEach(function(p) {
-                    if (colLower.indexOf(p) !== -1 && !categorySelect.value) {
-                        categorySelect.value = index;
-                    }
-                });
-            });
-        }
-        
-        // Show preview
-        function showPreview() {
-            var thead = document.getElementById('previewHead');
-            var tbody = document.getElementById('previewBody');
-            
-            // Header
-            var headerHtml = '<tr>';
-            allColumns.forEach(function(col) {
-                headerHtml += '<th>' + (col || '(empty)') + '</th>';
-            });
-            headerHtml += '</tr>';
-            thead.innerHTML = headerHtml;
-            
-            // Body (first 10 rows)
-            var bodyHtml = '';
-            var previewRows = currentSheetData.slice(0, 10);
-            previewRows.forEach(function(row) {
-                bodyHtml += '<tr>';
-                for (var i = 0; i < allColumns.length; i++) {
-                    var cellValue = row[i] !== undefined ? row[i] : '';
-                    bodyHtml += '<td>' + cellValue + '</td>';
-                }
-                bodyHtml += '</tr>';
-            });
-            tbody.innerHTML = bodyHtml;
-        }
-        
-        // Reset upload
-        function resetUpload() {
-            workbook = null;
-            currentSheetData = [];
-            selectedSheets = [];
-            fileName = '';
-            allColumns = [];
-            
-            document.getElementById('fileInput').value = '';
-            document.getElementById('vendorName').value = '';
-            document.getElementById('markupPercent').value = '45';
-            document.getElementById('productCodeCol').value = '';
-            document.getElementById('descriptionCol').value = '';
-            document.getElementById('priceCol').value = '';
-            document.getElementById('categoryCol').value = '';
-            
-            document.getElementById('step1').classList.remove('hidden');
-            document.getElementById('step2').classList.add('hidden');
-            document.getElementById('step3').classList.add('hidden');
-            document.getElementById('importResults').classList.add('hidden');
-            hideStatus();
-        }
-        
-        // Start import
-        function startImport() {
-            var vendorName = document.getElementById('vendorName').value.trim();
-            var productCodeColIdx = document.getElementById('productCodeCol').value;
-            var priceColIdx = document.getElementById('priceCol').value;
-            var descColIdx = document.getElementById('descriptionCol').value;
-            var categoryColIdx = document.getElementById('categoryCol').value;
-            var markupPercent = parseFloat(document.getElementById('markupPercent').value) || 45;
-            
-            // Validation
-            if (!vendorName) {
-                alert('Please enter a vendor name');
-                return;
-            }
-            if (productCodeColIdx === '') {
-                alert('Please select a Product Code column');
-                return;
-            }
-            if (priceColIdx === '') {
-                alert('Please select a Price column');
-                return;
-            }
-            
-            // Convert to numbers
-            productCodeColIdx = parseInt(productCodeColIdx);
-            priceColIdx = parseInt(priceColIdx);
-            if (descColIdx !== '') descColIdx = parseInt(descColIdx);
-            if (categoryColIdx !== '') categoryColIdx = parseInt(categoryColIdx);
-            
-            // Show step 3
-            document.getElementById('step2').classList.add('hidden');
-            document.getElementById('step3').classList.remove('hidden');
-            
-            var progressBar = document.getElementById('progressBar');
-            var progressText = document.getElementById('progressText');
-            
-            // Process import
-            processImport(vendorName, productCodeColIdx, priceColIdx, descColIdx, categoryColIdx, markupPercent, progressBar, progressText);
-        }
-        
-        async function processImport(vendorName, productCodeColIdx, priceColIdx, descColIdx, categoryColIdx, markupPercent, progressBar, progressText) {
-            try {
-                progressText.textContent = 'Creating price list record...';
-                progressBar.style.width = '10%';
-                
-                // Create Price List record
-                var priceListData = {
-                    data: {
-                        File_Name: fileName,
-                        Vendor_Name: vendorName,
-                        Upload_Date: new Date().toISOString().split('T')[0],
-                        Product_Count: currentSheetData.length
-                    }
-                };
-                
-                if (zohoInitialized && typeof ZOHO !== 'undefined' && ZOHO.CREATOR) {
-                    try {
-                        await ZOHO.CREATOR.API.addRecord({
-                            appName: "forbtech-pricelist-manager",
-                            formName: "Price_Lists",
-                            data: priceListData
-                        });
-                        console.log('Price list record created');
-                    } catch (err) {
-                        console.error('Error creating price list:', err);
-                    }
-                }
-                
-                // Process products
-                var totalProducts = currentSheetData.length;
-                var imported = 0;
-                var errors = 0;
-                
-                progressText.textContent = 'Importing products: 0/' + totalProducts;
-                progressBar.style.width = '20%';
-                
-                for (var i = 0; i < currentSheetData.length; i++) {
-                    var row = currentSheetData[i];
-                    var productCode = row[productCodeColIdx];
-                    var priceValue = row[priceColIdx];
-                    var costPrice = parseFloat(String(priceValue).replace(/[^0-9.-]/g, '')) || 0;
-                    
-                    if (!productCode || costPrice === 0) {
-                        errors++;
-                        continue;
-                    }
-                    
-                    var sellingPrice = costPrice * (1 + markupPercent / 100);
-                    
-                    var productData = {
-                        data: {
-                            product_code: String(productCode),
-                            description: descColIdx !== '' ? String(row[descColIdx] || '') : '',
-                            cost_price: costPrice,
-                            selling_price: Math.round(sellingPrice * 100) / 100,
-                            markup_percent: markupPercent,
-                            vendor_name: vendorName,
-                            category: categoryColIdx !== '' ? String(row[categoryColIdx] || '') : ''
-                        }
-                    };
-                    
-                    if (zohoInitialized && typeof ZOHO !== 'undefined' && ZOHO.CREATOR) {
-                        try {
-                            await ZOHO.CREATOR.API.addRecord({
-                                appName: "forbtech-pricelist-manager",
-                                formName: "Products",
-                                data: productData
-                            });
-                            imported++;
-                        } catch (err) {
-                            console.error('Error adding product:', err);
-                            errors++;
-                        }
-                    } else {
-                        // Simulate import for testing outside Zoho
-                        imported++;
-                    }
-                    
-                    // Update progress every 10 items
-                    if (i % 10 === 0 || i === currentSheetData.length - 1) {
-                        var progress = 20 + ((i + 1) / totalProducts * 80);
-                        progressBar.style.width = progress + '%';
-                        progressText.textContent = 'Importing products: ' + imported + '/' + totalProducts;
-                    }
-                }
-                
-                // Show results
-                document.getElementById('importTitle').textContent = 'Import Complete!';
-                document.getElementById('importSubtitle').textContent = 
-                    errors > 0 ? imported + ' products imported, ' + errors + ' skipped' : 'All products imported successfully';
-                
-                document.getElementById('totalProducts').textContent = imported;
-                document.getElementById('priceListName').textContent = fileName.length > 20 ? fileName.substring(0, 17) + '...' : fileName;
-                document.getElementById('vendorDisplay').textContent = vendorName;
-                
-                document.getElementById('importResults').classList.remove('hidden');
-                progressBar.style.width = '100%';
-                progressText.textContent = 'Done!';
-                
-            } catch (error) {
-                console.error('Import error:', error);
-                document.getElementById('importTitle').textContent = 'Import Error';
-                document.getElementById('importSubtitle').textContent = error.message || 'An error occurred during import';
-                progressBar.style.background = '#ef4444';
-                document.getElementById('importResults').classList.remove('hidden');
-            }
-        }
-    </script>
+    }
+    
+    document.getElementById('importTitle').textContent='Import Complete!';
+    document.getElementById('importSubtitle').textContent=imported+' imported, '+errors+' skipped';
+    document.getElementById('totalProducts').textContent=imported;
+    document.getElementById('vendorDisplay').textContent=vendor;
+    document.getElementById('importResults').classList.remove('hidden');
+    bar.style.width='100%';
+    txt.textContent='Done!';
+}
+</script>
 </body>
 </html>
