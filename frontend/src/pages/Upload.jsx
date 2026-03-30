@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import { UploadSimple, FileXls, Check, ArrowRight, Table, CheckCircle, CaretDown } from "@phosphor-icons/react";
+import { UploadSimple, FileXls, Check, ArrowRight, Table, CheckCircle, CaretDown, Percent } from "@phosphor-icons/react";
 import { toast } from "sonner";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -21,6 +21,9 @@ const Upload = () => {
     price_cols: []
   });
   const [step, setStep] = useState(1);
+  
+  // Markup percentage (default 45%)
+  const [markupPercent, setMarkupPercent] = useState(45);
   
   // Dropdown visibility
   const [openDropdown, setOpenDropdown] = useState(null);
@@ -105,6 +108,7 @@ const Upload = () => {
         vendor_id: selectedVendor,
         vendor_name: vendor.name,
         file_id: previewData.file_id,
+        markup_percent: markupPercent,
         mapping: {
           product_code_cols: columnMapping.product_code_cols,
           description_cols: columnMapping.description_cols,
@@ -136,6 +140,7 @@ const Upload = () => {
     setUploadResult(null);
     setStep(1);
     setColumnMapping({ product_code_cols: [], description_cols: [], price_cols: [] });
+    setMarkupPercent(45);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -151,6 +156,10 @@ const Upload = () => {
       }
     });
   };
+
+  // Calculate example markup
+  const exampleCost = 1000;
+  const exampleSelling = exampleCost * (1 + markupPercent / 100);
 
   const MultiSelectDropdown = ({ field, label, required, columns }) => {
     const isOpen = openDropdown === field;
@@ -339,7 +348,7 @@ const Upload = () => {
                 <div className="bg-blue-50 border border-blue-200 p-4 mb-6">
                   <p className="text-sm text-blue-800">
                     <strong>Found {previewData.total_sheets} sheets</strong> in this file. 
-                    Select ALL column names that contain product codes, descriptions, and prices - we'll match them across all sheets.
+                    Select ALL column names that contain product codes, descriptions, and prices.
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {previewData.sheets.slice(0, 10).map((sheet, idx) => (
@@ -379,9 +388,49 @@ const Upload = () => {
                   />
                 </div>
 
+                {/* Markup Section */}
+                <div className="bg-green-50 border border-green-200 p-4 mb-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Percent size={20} className="text-green-600" />
+                    <h3 className="font-bold text-green-800">Price Markup</h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs uppercase tracking-widest font-semibold text-green-700 mb-2 block">
+                        Markup Percentage
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          value={markupPercent}
+                          onChange={(e) => setMarkupPercent(Math.max(0, Math.min(500, Number(e.target.value))))}
+                          className="w-24 border border-green-300 px-3 py-2 text-center font-mono text-lg focus:outline-none focus:border-green-500"
+                          min="0"
+                          max="500"
+                          data-testid="markup-input"
+                        />
+                        <span className="text-green-700 font-bold">%</span>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-white border border-green-200 p-3">
+                      <p className="text-xs text-green-600 mb-1">Example Calculation:</p>
+                      <p className="text-sm">
+                        Cost: <span className="font-mono">R {exampleCost.toFixed(2)}</span>
+                        <span className="mx-2">→</span>
+                        Selling: <span className="font-mono font-bold text-green-700">R {exampleSelling.toFixed(2)}</span>
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <p className="text-xs text-green-600 mt-3">
+                    This markup will be applied to all imported prices. Both cost price and selling price will be stored.
+                  </p>
+                </div>
+
                 <p className="text-xs text-zinc-500 bg-zinc-50 p-3 border border-zinc-200">
-                  <strong>Tip:</strong> Select all columns that might contain product codes (e.g., "EF Code", "Model", "Item Code") 
-                  and prices (e.g., "Suggested Selling Price", "Standard Price", "Price"). The system will try each one on every sheet.
+                  <strong>Tip:</strong> Select all columns that might contain product codes and prices. The system will try each one on every sheet.
                 </p>
               </div>
 
@@ -413,8 +462,11 @@ const Upload = () => {
                   <CheckCircle size={40} weight="fill" className="text-green-600" />
                 </div>
                 <h2 className="font-bold text-xl mb-2">Upload Successful!</h2>
-                <p className="text-zinc-600 mb-6">
+                <p className="text-zinc-600 mb-2">
                   Imported <strong>{uploadResult.products}</strong> products from <strong>{uploadResult.sheets?.length || 0}</strong> sheets
+                </p>
+                <p className="text-sm text-green-600">
+                  Applied {markupPercent}% markup to all prices
                 </p>
               </div>
               

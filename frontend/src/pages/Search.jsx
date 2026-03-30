@@ -159,7 +159,7 @@ const Search = () => {
                 {results.length} result{results.length !== 1 ? "s" : ""} found
               </span>
               <span className="text-xs text-zinc-500">
-                Sorted by price (lowest first)
+                Sorted by selling price (lowest first)
               </span>
             </div>
             
@@ -197,10 +197,19 @@ const Search = () => {
                     </th>
                     <th 
                       className="text-right cursor-pointer hover:bg-zinc-100"
+                      onClick={() => handleSort("cost_price")}
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        Cost Price
+                        <SortIcon field="cost_price" />
+                      </div>
+                    </th>
+                    <th 
+                      className="text-right cursor-pointer hover:bg-zinc-100"
                       onClick={() => handleSort("price")}
                     >
                       <div className="flex items-center justify-end gap-1">
-                        Price (excl VAT)
+                        Selling Price
                         <SortIcon field="price" />
                       </div>
                     </th>
@@ -238,12 +247,25 @@ const Search = () => {
                         </span>
                       </td>
                       <td className="text-right">
-                        <span className={`price ${product.is_cheapest ? "price-cheapest" : ""}`}>
+                        <span className="font-mono text-sm text-zinc-500">
+                          R {(product.cost_price || product.price).toLocaleString(undefined, { 
+                            minimumFractionDigits: 2, 
+                            maximumFractionDigits: 2 
+                          })}
+                        </span>
+                      </td>
+                      <td className="text-right">
+                        <span className={`price font-bold ${product.is_cheapest ? "price-cheapest" : ""}`}>
                           R {product.price.toLocaleString(undefined, { 
                             minimumFractionDigits: 2, 
                             maximumFractionDigits: 2 
                           })}
                         </span>
+                        {product.markup_percent > 0 && (
+                          <span className="text-xs text-green-600 block">
+                            +{product.markup_percent}%
+                          </span>
+                        )}
                       </td>
                       <td className="text-right">
                         <span className={`text-xs font-mono ${product.match_score >= 80 ? 'text-green-600' : product.match_score >= 60 ? 'text-yellow-600' : 'text-zinc-500'}`}>

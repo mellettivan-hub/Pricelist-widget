@@ -72,6 +72,7 @@ class UploadWithMappingMulti(BaseModel):
     vendor_id: str
     vendor_name: str
     file_id: str
+    markup_percent: float = 0  # Default no markup
     mapping: ColumnMappingMulti
 
 
@@ -588,11 +589,15 @@ async def upload_with_mapping_multi(data: UploadWithMappingMulti):
                         
                         try:
                             price_str = str(price_val).replace(',', '').replace('R', '').replace(' ', '')
-                            price = float(price_str)
-                            if price <= 0 or price > 10000000:
+                            cost_price = float(price_str)
+                            if cost_price <= 0 or cost_price > 10000000:
                                 continue
                         except:
                             continue
+                        
+                        # Calculate selling price with markup
+                        markup_multiplier = 1 + (data.markup_percent / 100)
+                        selling_price = round(cost_price * markup_multiplier, 2)
                         
                         if not description or description.lower() in ['nan', 'none']:
                             description = product_code
@@ -603,7 +608,10 @@ async def upload_with_mapping_multi(data: UploadWithMappingMulti):
                             'product_code_normalized': normalize_product_code(product_code),
                             'product_code_base': extract_base_code(product_code),
                             'description': description,
-                            'price': round(price, 2),
+                            'cost_price': round(cost_price, 2),
+                            'price': selling_price,  # This is the selling price (for search display)
+                            'selling_price': selling_price,
+                            'markup_percent': data.markup_percent,
                             'vendor_id': data.vendor_id,
                             'vendor_name': data.vendor_name,
                             'price_list_id': price_list_id,
