@@ -1,4 +1,5 @@
 from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException, Query, Body
+from fastapi.responses import FileResponse, StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -12,6 +13,7 @@ from datetime import datetime, timezone
 import pandas as pd
 import io
 import re
+import csv
 from rapidfuzz import fuzz, process
 
 ROOT_DIR = Path(__file__).parent
@@ -910,6 +912,85 @@ async def get_stats():
     }
 
 
+# Download endpoints
+@api_router.get("/download/products")
+async def download_products_csv():
+    """Download all products as CSV"""
+    products = await db.products.find({}, {"_id": 0}).to_list(100000)
+    
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=['product_code', 'description', 'cost_price', 'selling_price', 'markup_percent', 'vendor_name', 'category'])
+    writer.writeheader()
+    
+    for p in products:
+        writer.writerow({
+            'product_code': p.get('product_code', ''),
+            'description': p.get('description', ''),
+            'cost_price': p.get('cost_price', ''),
+            'selling_price': p.get('selling_price', p.get('price', '')),
+            'markup_percent': p.get('markup_percent', 45),
+            'vendor_name': p.get('vendor_name', ''),
+            'category': p.get('category', '')
+        })
+    
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=products_export.csv"}
+    )
+
+
+@api_router.get("/download/vendors")
+async def download_vendors_csv():
+    """Download all vendors as CSV"""
+    vendors = await db.vendors.find({}, {"_id": 0}).to_list(1000)
+    
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=['name', 'contact_email', 'contact_phone'])
+    writer.writeheader()
+    
+    for v in vendors:
+        writer.writerow({
+            'name': v.get('name', ''),
+            'contact_email': v.get('contact_email', ''),
+            'contact_phone': v.get('contact_phone', '')
+        })
+    
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=vendors_export.csv"}
+    )
+
+
+@api_router.get("/download/zoho_guide")
+async def download_zoho_guide():
+    """Download Zoho Creator setup guide"""
+    guide_path = Path("/app/zoho_creator_guide.md")
+    if guide_path.exists():
+        return FileResponse(
+            guide_path,
+            media_type="text/markdown",
+            filename="zoho_creator_guide.md"
+        )
+    raise HTTPException(status_code=404, detail="Guide not found")
+
+
+@api_router.get("/download/zoho_inventory")
+async def download_zoho_inventory_guide():
+    """Download Zoho Inventory integration guide"""
+    guide_path = Path("/app/zoho_inventory_integration.md")
+    if guide_path.exists():
+        return FileResponse(
+            guide_path,
+            media_type="text/markdown",
+            filename="zoho_inventory_integration.md"
+        )
+    raise HTTPException(status_code=404, detail="Guide not found")
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
@@ -930,3 +1011,4 @@ logger = logging.getLogger(__name__)
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+
