@@ -1,67 +1,154 @@
 # Price Check App - Product Requirements Document
 
 ## Original Problem Statement
-Build a price check app to compare vendor price lists. Users upload Excel price lists from multiple vendors, search products by code/description, and see all vendor prices sorted lowest to highest with the cheapest highlighted. Track price history over time. App will later be migrated to Zoho Creator.
+Build a price check app that:
+1. Uploads vendor price lists (Excel sheets)
+2. Searches products and finds the cheapest price across all vendors
+3. Tracks price history
+4. Manages vendors
+5. Integrates with Zoho Inventory for seamless price updates
 
-## Architecture
+## Current Implementation (v2.0 - Zoho Inventory Integration)
 
-### Backend (FastAPI + MongoDB)
-- **API Routes**: `/api/vendors`, `/api/upload`, `/api/search`, `/api/price-lists`, `/api/price-history`, `/api/stats`
-- **Database Collections**: `vendors`, `products`, `price_lists`, `price_history`
-- **Excel Parser**: Supports HIKVISION SA and Sensor Security formats, auto-detects column structure
+### Core Features Implemented
 
-### Frontend (React + Tailwind)
-- **Pages**: Dashboard, Search, Upload, Vendors, Price Lists, Price History
-- **Design**: Swiss/High-Contrast theme, IBM Plex fonts, dense data tables
-- **Components**: Shadcn UI components
+#### 1. Zoho Inventory Integration ✅
+- **OAuth2 Authentication**: Secure token-based authentication with automatic refresh
+- **Pull Active Items**: Fetches all active products from Zoho Inventory
+- **View Inventory**: Browse and search Zoho Inventory items with pagination
+- **Update Prices**: Push cost price and selling price updates back to Zoho Inventory
+- **Bulk Updates**: Update multiple items at once
 
-## User Personas
-1. **Procurement Manager**: Searches products, compares prices across vendors
-2. **Admin**: Manages vendors, uploads price lists, tracks history
+#### 2. Vendor Pricelist Upload ✅
+- Upload Excel files (.xlsx, .xls, .csv)
+- Multi-sheet support - processes all sheets from a single Excel file
+- Smart column detection for product codes, descriptions, and prices
+- Configurable markup percentage (default 45%)
+- Stores products with vendor information in MongoDB
 
-## Core Requirements (Static)
-- [ ] Upload Excel price lists from vendors
-- [ ] Search by product code OR description
-- [ ] Show all prices sorted lowest to highest
-- [ ] Highlight cheapest option
-- [ ] Track price history over time
-- [ ] Manage vendors (CRUD)
-- [ ] View/delete uploaded price lists
+#### 3. Product Matching & Price Comparison ✅
+- **Exact Match**: 100% SKU/product code match
+- **Normalized Match**: Matches after normalizing codes (removing spaces, dashes, etc.)
+- **Fuzzy Match**: Configurable threshold (default 80%) for partial matches
+- Finds cheapest price across all uploaded vendor pricelists
+- Shows savings potential for each matched item
 
-## What's Been Implemented (2026-03-27)
-- [x] Full-stack app with FastAPI backend + React frontend
-- [x] Vendor management (add/view/delete)
-- [x] Excel file upload with multi-format parser
-- [x] Product search with results sorted by price
-- [x] Cheapest price highlighting (trophy icon + green background)
-- [x] Price history tracking with charts
-- [x] Dashboard with stats
-- [x] Successfully imported 2,532 products from 2 vendors
+#### 4. Price Update to Zoho ✅
+- Select individual items or all cheaper prices
+- Bulk update with progress tracking
+- Updates both cost price (purchase_rate) and selling price (rate)
+- Automatic markup calculation
 
-## Supported Excel Formats
-1. **HIKVISION SA**: Columns - Product name, SAP code, Description, Unit Price (xVAT)
-2. **Sensor Security**: Columns - Sensor Product Code, Description, Sub-D price, Retail
+### Technical Architecture
 
-## Prioritized Backlog
+```
+/app/
+├── backend/
+│   ├── server.py          # FastAPI server with all endpoints
+│   ├── zoho_client.py     # Zoho Inventory API client
+│   ├── .env               # Environment variables (Zoho credentials)
+│   └── requirements.txt
+├── frontend/
+│   └── src/
+│       ├── pages/
+│       │   ├── ZohoDashboard.jsx    # Dashboard with stats
+│       │   ├── ZohoInventory.jsx    # Zoho items browser
+│       │   ├── MatchAndUpdate.jsx   # Price matching & updates
+│       │   ├── Upload.jsx           # Pricelist upload
+│       │   ├── Vendors.jsx          # Vendor management
+│       │   └── PriceLists.jsx       # Uploaded pricelists
+│       └── components/
+└── memory/
+    └── PRD.md
+```
 
-### P0 (Critical) - DONE
-- [x] Core search functionality
-- [x] Price comparison with sorting
-- [x] Cheapest highlighting
-- [x] Excel upload/parsing
+### API Endpoints
 
-### P1 (Important)
-- [ ] Export search results to CSV/PDF
-- [ ] Filter by vendor/category
-- [ ] Email alerts for price changes
+#### Zoho Inventory
+- `GET /api/zoho/items` - Get paginated Zoho items
+- `GET /api/zoho/items/all` - Get all active Zoho items
+- `GET /api/zoho/match` - Match Zoho items with uploaded pricelists
+- `PUT /api/zoho/items/{item_id}/price` - Update single item price
+- `POST /api/zoho/items/bulk-update` - Bulk update prices
+- `GET /api/zoho/sync-status` - Get connection status and counts
 
-### P2 (Nice to Have)
-- [ ] User authentication
-- [ ] Bulk vendor upload
-- [ ] Price trend analytics
-- [ ] API for Zoho Creator integration
+#### Pricelists & Vendors
+- `POST /api/upload/file` - Upload Excel file
+- `POST /api/upload/process-multi` - Process file with column mapping
+- `GET /api/vendors` - List all vendors
+- `POST /api/vendors` - Create vendor
+- `GET /api/price-lists` - List all pricelists
+- `GET /api/products/search` - Search products
 
-## Next Tasks
-1. Test with more vendor price list formats
-2. Add export functionality for quotes
-3. Prepare documentation for Zoho Creator migration
+### Database Schema (MongoDB)
+
+#### zoho_tokens
+```json
+{
+  "_id": "inventory_token",
+  "access_token": "string",
+  "refresh_token": "string",
+  "expires_at": "datetime",
+  "updated_at": "datetime"
+}
+```
+
+#### products
+```json
+{
+  "id": "uuid",
+  "product_code": "string",
+  "description": "string",
+  "cost_price": "number",
+  "selling_price": "number",
+  "vendor_id": "string",
+  "vendor_name": "string",
+  "price_list_id": "string"
+}
+```
+
+#### vendors
+```json
+{
+  "id": "uuid",
+  "name": "string",
+  "contact_email": "string",
+  "contact_phone": "string"
+}
+```
+
+### Environment Variables (backend/.env)
+```
+MONGO_URL=mongodb://localhost:27017
+DB_NAME=test_database
+ZOHO_CLIENT_ID=xxx
+ZOHO_CLIENT_SECRET=xxx
+ZOHO_REFRESH_TOKEN=xxx
+ZOHO_ORGANIZATION_ID=xxx
+ZOHO_API_DOMAIN=https://www.zohoapis.com
+```
+
+## Completed Work
+- [x] Zoho Inventory API integration with OAuth2
+- [x] Pull active items from Zoho Inventory
+- [x] Match products by SKU (exact, normalized, fuzzy)
+- [x] Find cheapest prices from uploaded vendor pricelists
+- [x] Update Zoho Inventory prices (cost + selling with markup)
+- [x] Bulk price update functionality
+- [x] Dashboard with connection status and stats
+- [x] Zoho Inventory browser with search
+- [x] Match & Update page with filtering and selection
+
+## Future Enhancements (Backlog)
+- [ ] P1: Price history tracking over time
+- [ ] P1: Scheduled automatic price sync
+- [ ] P2: Export comparison reports to Excel
+- [ ] P2: Email notifications for significant price changes
+- [ ] P3: Multi-organization Zoho support
+- [ ] P3: Custom matching rules per vendor
+
+## Zoho API Credentials
+- Client ID: 1000.Y9885DJCMOUXHU1JLOZYCC255A21PP
+- Organization ID: 721559909
+- Data Center: US (zoho.com)
+- Scopes: ZohoInventory.FullAccess.all

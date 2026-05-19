@@ -15,6 +15,7 @@ import io
 import re
 import csv
 from rapidfuzz import fuzz, process
+from fuzzywuzzy import fuzz as fwfuzz
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -1025,6 +1026,349 @@ async def serve_widget(filename: str):
     if widget_path.exists() and filename.endswith('.html'):
         return FileResponse(widget_path, media_type="text/html")
     raise HTTPException(status_code=404, detail="Widget not found")
+
+
+# ==================== ZOHO INVENTORY INTEGRATION ====================
+from zoho_client import ZohoInventoryClient
+
+# Pydantic models for Zoho Integration
+class ZohoItem(BaseModel):
+    item_id: str
+    name: str
+    sku: Optional[str] = None
+    description: Optional[str] = None
+    rate: float = 0  # Selling price
+    purchase_rate: float = 0  # Cost price
+    status: str = "active"
+    brand: Optional[str] = None
+    stock_on_hand: float = 0
+
+class ZohoPriceUpdate(BaseModel):
+    item_id: str
+    new_cost_price: float
+    new_selling_price: float
+    source_vendor: str
+    source_product_code: str
+
+class BulkPriceUpdate(BaseModel):
+    updates: List[ZohoPriceUpdate]
+    markup_percent: float = 45.0
+
+class MatchedProduct(BaseModel):
+    zoho_item_id: str
+    zoho_item_name: str
+    zoho_sku: str
+    zoho_current_cost: float
+    zoho_current_selling: float
+    matched_vendor: str
+    matched_product_code: str
+    matched_price: float
+    suggested_cost: float
+    suggested_selling: float
+    match_type: str  # "exact" or "fuzzy"
+    match_score: int
+    price_difference: float
+    is_cheaper: bool
+
+class MatchResult(BaseModel):
+    total_zoho_items: int
+    total_matched: int
+    total_cheaper: int
+    matches: List[MatchedProduct]
+
+
+# Zoho Inventory Routes
+@api_router.get("/zoho/items")
+async def get_zoho_items(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+    status: str = Query("active")
+):
+    """Get items from Zoho Inventory"""
+    try:
+        zoho = ZohoInventoryClient(db)
+        result = await zoho.get_items(page=page, per_page=per_page, status=status)
+        
+        items = []
+        for item in result.get("items", []):
+            items.append({
+                "item_id": str(item.get("item_id")),
+                "name": item.get("name", ""),
+                "sku": item.get("sku", ""),
+                "description": item.get("description", ""),
+                "rate": float(item.get("rate", 0)),
+                "purchase_rate": float(item.get("purchase_rate", 0)),
+                "status": item.get("status", ""),
+                "brand": item.get("brand", ""),
+                "stock_on_hand": float(item.get("stock_on_hand", 0))
+            })
+        
+        page_context = result.get("page_context", {})
+        return {
+            "items": items,
+            "page": page_context.get("page", page),
+            "per_page": page_context.get("per_page", per_page),
+            "has_more_page": page_context.get("has_more_page", False),
+            "total": len(items)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching Zoho items: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/zoho/items/all")
+async def get_all_zoho_items():
+    """Get ALL active items from Zoho Inventory (with pagination handled)"""
+    try:
+        zoho = ZohoInventoryClient(db)
+        items = await zoho.get_all_active_items()
+        
+        formatted_items = []
+        for item in items:
+            formatted_items.append({
+                "item_id": str(item.get("item_id")),
+                "name": item.get("name", ""),
+                "sku": item.get("sku", ""),
+                "description": item.get("description", ""),
+                "rate": float(item.get("rate", 0)),
+                "purchase_rate": float(item.get("purchase_rate", 0)),
+                "status": item.get("status", ""),
+                "brand": item.get("brand", ""),
+                "stock_on_hand": float(item.get("stock_on_hand", 0))
+            })
+        
+        return {
+            "items": formatted_items,
+            "total": len(formatted_items)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching all Zoho items: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/zoho/match")
+async def match_zoho_with_pricelists(
+    markup_percent: float = Query(45.0, description="Markup percentage for selling price"),
+    match_threshold: int = Query(80, ge=50, le=100, description="Minimum fuzzy match score")
+):
+    """Match Zoho Inventory items with uploaded pricelists and find cheapest prices"""
+    try:
+        zoho = ZohoInventoryClient(db)
+        zoho_items = await zoho.get_all_active_items()
+        
+        # Get all products from our database (from uploaded pricelists)
+        db_products = await db.products.find({}, {"_id": 0}).to_list(100000)
+        
+        if not db_products:
+            return {
+                "total_zoho_items": len(zoho_items),
+                "total_matched": 0,
+                "total_cheaper": 0,
+                "matches": [],
+                "message": "No pricelists uploaded yet. Upload vendor pricelists first."
+            }
+        
+        # Build lookup dictionaries for matching
+        # Exact match by SKU/product code
+        exact_lookup = {}
+        for p in db_products:
+            code = p.get("product_code", "").upper().strip()
+            if code:
+                if code not in exact_lookup:
+                    exact_lookup[code] = []
+                exact_lookup[code].append(p)
+        
+        # Normalized codes for fuzzy matching
+        normalized_lookup = {}
+        for p in db_products:
+            code = p.get("product_code", "")
+            norm_code = normalize_product_code(code)
+            if norm_code:
+                if norm_code not in normalized_lookup:
+                    normalized_lookup[norm_code] = []
+                normalized_lookup[norm_code].append(p)
+        
+        matches = []
+        
+        for item in zoho_items:
+            zoho_sku = (item.get("sku") or "").upper().strip()
+            zoho_name = item.get("name", "")
+            zoho_current_cost = float(item.get("purchase_rate", 0))
+            zoho_current_selling = float(item.get("rate", 0))
+            
+            best_match = None
+            match_type = None
+            match_score = 0
+            
+            # Try exact SKU match first
+            if zoho_sku and zoho_sku in exact_lookup:
+                candidates = exact_lookup[zoho_sku]
+                # Find cheapest among exact matches
+                cheapest = min(candidates, key=lambda x: float(x.get("cost_price", 0) or x.get("price", 0) or 999999999))
+                best_match = cheapest
+                match_type = "exact"
+                match_score = 100
+            
+            # Try normalized code match
+            if not best_match and zoho_sku:
+                norm_sku = normalize_product_code(zoho_sku)
+                if norm_sku in normalized_lookup:
+                    candidates = normalized_lookup[norm_sku]
+                    cheapest = min(candidates, key=lambda x: float(x.get("cost_price", 0) or x.get("price", 0) or 999999999))
+                    best_match = cheapest
+                    match_type = "normalized"
+                    match_score = 95
+            
+            # Try fuzzy matching as fallback
+            if not best_match and zoho_sku:
+                best_fuzzy_score = 0
+                for code, products in exact_lookup.items():
+                    score = fwfuzz.ratio(zoho_sku, code)
+                    if score >= match_threshold and score > best_fuzzy_score:
+                        best_fuzzy_score = score
+                        cheapest = min(products, key=lambda x: float(x.get("cost_price", 0) or x.get("price", 0) or 999999999))
+                        best_match = cheapest
+                        match_type = "fuzzy"
+                        match_score = score
+            
+            if best_match:
+                # Get the price from the matched product
+                matched_price = float(best_match.get("cost_price", 0) or best_match.get("price", 0))
+                suggested_cost = matched_price
+                suggested_selling = round(matched_price * (1 + markup_percent / 100), 2)
+                
+                price_diff = zoho_current_cost - matched_price if zoho_current_cost > 0 else 0
+                is_cheaper = matched_price < zoho_current_cost if zoho_current_cost > 0 else True
+                
+                matches.append({
+                    "zoho_item_id": str(item.get("item_id")),
+                    "zoho_item_name": zoho_name,
+                    "zoho_sku": zoho_sku,
+                    "zoho_current_cost": zoho_current_cost,
+                    "zoho_current_selling": zoho_current_selling,
+                    "matched_vendor": best_match.get("vendor_name", "Unknown"),
+                    "matched_product_code": best_match.get("product_code", ""),
+                    "matched_price": matched_price,
+                    "suggested_cost": suggested_cost,
+                    "suggested_selling": suggested_selling,
+                    "match_type": match_type,
+                    "match_score": match_score,
+                    "price_difference": round(price_diff, 2),
+                    "is_cheaper": is_cheaper
+                })
+        
+        # Sort by whether it's cheaper and then by price difference
+        matches.sort(key=lambda x: (-x["is_cheaper"], -x["price_difference"]))
+        
+        cheaper_count = sum(1 for m in matches if m["is_cheaper"])
+        
+        return {
+            "total_zoho_items": len(zoho_items),
+            "total_matched": len(matches),
+            "total_cheaper": cheaper_count,
+            "matches": matches
+        }
+    except Exception as e:
+        logger.error(f"Error matching Zoho items: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.put("/zoho/items/{item_id}/price")
+async def update_zoho_item_price(
+    item_id: str,
+    purchase_rate: float = Body(..., embed=False),
+    rate: float = Body(..., embed=False)
+):
+    """Update a single item's prices in Zoho Inventory"""
+    try:
+        zoho = ZohoInventoryClient(db)
+        result = await zoho.update_item_prices(item_id, purchase_rate, rate)
+        return {"success": True, "result": result}
+    except Exception as e:
+        logger.error(f"Error updating Zoho item {item_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class SinglePriceUpdate(BaseModel):
+    item_id: str
+    purchase_rate: float
+    rate: float
+
+
+@api_router.post("/zoho/items/bulk-update")
+async def bulk_update_zoho_prices(updates: List[SinglePriceUpdate]):
+    """Bulk update prices for multiple items in Zoho Inventory"""
+    try:
+        zoho = ZohoInventoryClient(db)
+        results = []
+        errors = []
+        
+        for update in updates:
+            try:
+                result = await zoho.update_item_prices(
+                    update.item_id, 
+                    update.purchase_rate, 
+                    update.rate
+                )
+                results.append({
+                    "item_id": update.item_id,
+                    "success": True
+                })
+            except Exception as e:
+                errors.append({
+                    "item_id": update.item_id,
+                    "error": str(e)
+                })
+        
+        return {
+            "total": len(updates),
+            "successful": len(results),
+            "failed": len(errors),
+            "results": results,
+            "errors": errors
+        }
+    except Exception as e:
+        logger.error(f"Error in bulk update: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/zoho/sync-status")
+async def get_zoho_sync_status():
+    """Get the status of Zoho Inventory sync"""
+    try:
+        zoho = ZohoInventoryClient(db)
+        # Test connection by getting first page of items
+        result = await zoho.get_items(page=1, per_page=200, status="active")
+        
+        # Count items (Zoho doesn't provide total count, so estimate based on first page)
+        items_count = len(result.get("items", []))
+        has_more = result.get("page_context", {}).get("has_more_page", False) if "page_context" in result else result.get("has_more_page", False)
+        
+        # If there's more pages, we indicate at least 200+
+        zoho_items_display = f"{items_count}+" if has_more else items_count
+        
+        # Get count of uploaded products
+        product_count = await db.products.count_documents({})
+        vendor_count = await db.vendors.count_documents({})
+        pricelist_count = await db.price_lists.count_documents({})
+        
+        return {
+            "zoho_connected": True,
+            "zoho_items_available": items_count if not has_more else 200,
+            "zoho_items_has_more": has_more,
+            "uploaded_products": product_count,
+            "vendors": vendor_count,
+            "pricelists": pricelist_count
+        }
+    except Exception as e:
+        logger.error(f"Error checking Zoho status: {e}")
+        return {
+            "zoho_connected": False,
+            "error": str(e),
+            "uploaded_products": await db.products.count_documents({}),
+            "vendors": await db.vendors.count_documents({}),
+            "pricelists": await db.price_lists.count_documents({})
+        }
 
 
 # Include the router in the main app

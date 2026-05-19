@@ -2,12 +2,12 @@ import "@/App.css";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import Layout from "./components/Layout";
-import Dashboard from "./pages/Dashboard";
-import Search from "./pages/Search";
+import ZohoDashboard from "./pages/ZohoDashboard";
+import ZohoInventory from "./pages/ZohoInventory";
 import Upload from "./pages/Upload";
 import Vendors from "./pages/Vendors";
 import PriceLists from "./pages/PriceLists";
-import PriceHistory from "./pages/PriceHistory";
+import MatchAndUpdate from "./pages/MatchAndUpdate";
 
 function App() {
   return (
@@ -15,12 +15,12 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Layout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="search" element={<Search />} />
+            <Route index element={<ZohoDashboard />} />
+            <Route path="inventory" element={<ZohoInventory />} />
             <Route path="upload" element={<Upload />} />
             <Route path="vendors" element={<Vendors />} />
             <Route path="price-lists" element={<PriceLists />} />
-            <Route path="history" element={<PriceHistory />} />
+            <Route path="match" element={<MatchAndUpdate />} />
           </Route>
         </Routes>
       </BrowserRouter>

@@ -1,21 +1,21 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { 
-  MagnifyingGlass, 
   UploadSimple, 
   Storefront, 
   Files, 
-  ChartLine,
-  House
+  House,
+  Package,
+  ArrowsLeftRight
 } from "@phosphor-icons/react";
 
 const Layout = () => {
   const navItems = [
     { to: "/", icon: House, label: "Dashboard", exact: true },
-    { to: "/search", icon: MagnifyingGlass, label: "Price Search" },
+    { to: "/inventory", icon: Package, label: "Zoho Inventory" },
     { to: "/upload", icon: UploadSimple, label: "Upload Pricelist" },
+    { to: "/match", icon: ArrowsLeftRight, label: "Match & Update" },
     { to: "/vendors", icon: Storefront, label: "Vendors" },
     { to: "/price-lists", icon: Files, label: "Price Lists" },
-    { to: "/history", icon: ChartLine, label: "Price History" },
   ];
 
   return (
@@ -27,7 +27,7 @@ const Layout = () => {
             PRICE CHECK
           </h1>
           <p className="text-xs text-zinc-500 mt-1 uppercase tracking-widest">
-            Vendor Comparison
+            Zoho Inventory
           </p>
         </div>
         
@@ -50,7 +50,7 @@ const Layout = () => {
         
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-zinc-200 bg-white">
           <p className="text-xs text-zinc-400 text-center">
-            v1.0 | Ready for Zoho
+            v2.0 | Zoho Connected
           </p>
         </div>
       </aside>
