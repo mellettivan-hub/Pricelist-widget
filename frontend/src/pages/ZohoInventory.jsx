@@ -4,13 +4,14 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { 
   RefreshCw, Search, Package, Filter, X, 
-  ShoppingCart, Tag, Boxes, TrendingUp, CheckCircle, Factory, Edit, Save
+  ShoppingCart, Tag, Boxes, TrendingUp, CheckCircle, Factory, Edit, Save, BookOpen
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 export default function ZohoInventory() {
   const [allItems, setAllItems] = useState([]);
+  const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [fuzzySearch, setFuzzySearch] = useState(false);
@@ -39,8 +40,19 @@ export default function ZohoInventory() {
     }
   };
 
+  const fetchAccounts = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/zoho/accounts`);
+      const data = await res.json();
+      setAccounts(data.accounts || []);
+    } catch (err) {
+      console.error('Failed to fetch accounts:', err);
+    }
+  };
+
   useEffect(() => {
     fetchAllItems();
+    fetchAccounts();
   }, []);
 
   // Calculate stats
@@ -65,6 +77,17 @@ export default function ZohoInventory() {
     });
     return Array.from(brandSet).sort();
   }, [allItems]);
+
+  // Filter accounts by type for dropdowns
+  const salesAccounts = useMemo(() => 
+    accounts.filter(a => a.account_type === 'income' || a.account_type === 'other_income' || a.account_name.toLowerCase().includes('sales')),
+    [accounts]
+  );
+  
+  const purchaseAccounts = useMemo(() => 
+    accounts.filter(a => a.account_type === 'expense' || a.account_type === 'cost_of_goods_sold' || a.account_name.toLowerCase().includes('cost') || a.account_name.toLowerCase().includes('purchase')),
+    [accounts]
+  );
 
   // Fuzzy match function
   const fuzzyMatch = (text, query) => {
@@ -157,8 +180,10 @@ export default function ZohoInventory() {
         manufacturer: data.manufacturer || '',
         unit: data.unit || '',
         reorder_level: data.reorder_level || 0,
-        // Account info (read-only display)
+        // Account info
+        account_id: data.account_id || '',
         account_name: data.account_name || '',
+        purchase_account_id: data.purchase_account_id || '',
         purchase_account_name: data.purchase_account_name || '',
         inventory_account_name: data.inventory_account_name || '',
         tax_name: data.tax_name || '',
@@ -178,6 +203,10 @@ export default function ZohoInventory() {
         manufacturer: item.manufacturer || '',
         unit: item.unit || '',
         reorder_level: item.reorder_level || 0,
+        account_id: item.account_id || '',
+        account_name: item.account_name || '',
+        purchase_account_id: item.purchase_account_id || '',
+        purchase_account_name: item.purchase_account_name || '',
       });
     } finally {
       setLoadingDetails(false);
@@ -195,30 +224,47 @@ export default function ZohoInventory() {
     setSaveMessage(null);
     
     try {
+      const updateData = {
+        name: editForm.name,
+        sku: editForm.sku,
+        description: editForm.description,
+        rate: parseFloat(editForm.rate) || 0,
+        purchase_rate: parseFloat(editForm.purchase_rate) || 0,
+        brand: editForm.brand,
+        manufacturer: editForm.manufacturer,
+        unit: editForm.unit,
+        reorder_level: parseFloat(editForm.reorder_level) || 0,
+      };
+      
+      // Only include account IDs if they were changed
+      if (editForm.account_id) {
+        updateData.account_id = editForm.account_id;
+      }
+      if (editForm.purchase_account_id) {
+        updateData.purchase_account_id = editForm.purchase_account_id;
+      }
+      
       const res = await fetch(`${API_URL}/api/zoho/items/${editingItem.item_id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: editForm.name,
-          sku: editForm.sku,
-          description: editForm.description,
-          rate: parseFloat(editForm.rate) || 0,
-          purchase_rate: parseFloat(editForm.purchase_rate) || 0,
-          brand: editForm.brand,
-          manufacturer: editForm.manufacturer,
-          unit: editForm.unit,
-          reorder_level: parseFloat(editForm.reorder_level) || 0,
-        })
+        body: JSON.stringify(updateData)
       });
       
       const result = await res.json();
       
       if (result.success) {
-        setSaveMessage({ type: 'success', text: 'Item updated successfully!' });
+        setSaveMessage({ type: 'success', text: 'Item updated successfully in Zoho!' });
         // Update local state
         setAllItems(prev => prev.map(item => 
           item.item_id === editingItem.item_id 
-            ? { ...item, ...editForm, rate: parseFloat(editForm.rate), purchase_rate: parseFloat(editForm.purchase_rate) }
+            ? { 
+                ...item, 
+                ...editForm, 
+                rate: parseFloat(editForm.rate), 
+                purchase_rate: parseFloat(editForm.purchase_rate),
+                account_name: accounts.find(a => a.account_id === editForm.account_id)?.account_name || editForm.account_name,
+                purchase_account_name: accounts.find(a => a.account_id === editForm.purchase_account_id)?.account_name || editForm.purchase_account_name,
+              }
             : item
         ));
         setTimeout(() => closeEditModal(), 1500);
@@ -240,7 +286,7 @@ export default function ZohoInventory() {
           <h1 className="text-2xl font-bold text-gray-900">Zoho Inventory</h1>
           <p className="text-gray-500 mt-1">Manage and view your inventory products</p>
         </div>
-        <Button onClick={fetchAllItems} disabled={loading} variant="outline">
+        <Button onClick={() => { fetchAllItems(); fetchAccounts(); }} disabled={loading} variant="outline">
           <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
@@ -447,9 +493,18 @@ export default function ZohoInventory() {
                     <th className="text-left p-3 font-semibold">Product Name</th>
                     <th className="text-left p-3 font-semibold">Type</th>
                     <th className="text-left p-3 font-semibold">Brand</th>
-                    <th className="text-left p-3 font-semibold">Manufacturer</th>
-                    <th className="text-center p-3 font-semibold">Sellable</th>
-                    <th className="text-center p-3 font-semibold">Purchasable</th>
+                    <th className="text-left p-3 font-semibold bg-indigo-50">
+                      <div className="flex items-center gap-1">
+                        <BookOpen className="w-3 h-3" />
+                        Sales Account
+                      </div>
+                    </th>
+                    <th className="text-left p-3 font-semibold bg-orange-50">
+                      <div className="flex items-center gap-1">
+                        <BookOpen className="w-3 h-3" />
+                        Purchase Account
+                      </div>
+                    </th>
                     <th className="text-right p-3 font-semibold bg-blue-50">Cost Price</th>
                     <th className="text-right p-3 font-semibold bg-green-50">Selling Price</th>
                     <th className="text-right p-3 font-semibold">Stock</th>
@@ -497,27 +552,15 @@ export default function ZohoInventory() {
                           </span>
                         ) : '-'}
                       </td>
-                      <td className="p-3">
-                        {item.manufacturer ? (
-                          <span className="flex items-center gap-1 text-xs text-gray-600">
-                            <Factory className="w-3 h-3" />
-                            {item.manufacturer}
-                          </span>
-                        ) : '-'}
+                      <td className="p-3 bg-indigo-50/30">
+                        <span className="text-xs text-indigo-700 font-medium">
+                          {item.account_name || '-'}
+                        </span>
                       </td>
-                      <td className="p-3 text-center">
-                        {item.is_sales_item ? (
-                          <span className="text-green-600">✓</span>
-                        ) : (
-                          <span className="text-gray-400">✗</span>
-                        )}
-                      </td>
-                      <td className="p-3 text-center">
-                        {item.is_purchase_item ? (
-                          <span className="text-green-600">✓</span>
-                        ) : (
-                          <span className="text-gray-400">✗</span>
-                        )}
+                      <td className="p-3 bg-orange-50/30">
+                        <span className="text-xs text-orange-700 font-medium">
+                          {item.purchase_account_name || '-'}
+                        </span>
                       </td>
                       <td className="p-3 text-right font-medium text-gray-700 bg-blue-50/30">
                         {formatCurrency(item.purchase_rate)}
@@ -551,7 +594,7 @@ export default function ZohoInventory() {
       {editingItem && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b sticky top-0 bg-white">
+            <div className="p-6 border-b sticky top-0 bg-white z-10">
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold">Edit Product</h2>
                 <Button variant="ghost" size="sm" onClick={closeEditModal}>
@@ -633,6 +676,46 @@ export default function ZohoInventory() {
                   </div>
                 </div>
 
+                {/* GL Accounts */}
+                <div>
+                  <h3 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <BookOpen className="w-4 h-4" />
+                    GL Accounts
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Sales Account</label>
+                      <select
+                        className="w-full border rounded-md p-2 text-sm"
+                        value={editForm.account_id || ''}
+                        onChange={(e) => setEditForm({...editForm, account_id: e.target.value})}
+                      >
+                        <option value="">-- Keep Current ({editForm.account_name || 'None'}) --</option>
+                        {accounts.map(acc => (
+                          <option key={acc.account_id} value={acc.account_id}>
+                            {acc.account_code ? `[${acc.account_code}] ` : ''}{acc.account_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Purchase Account</label>
+                      <select
+                        className="w-full border rounded-md p-2 text-sm"
+                        value={editForm.purchase_account_id || ''}
+                        onChange={(e) => setEditForm({...editForm, purchase_account_id: e.target.value})}
+                      >
+                        <option value="">-- Keep Current ({editForm.purchase_account_name || 'None'}) --</option>
+                        {accounts.map(acc => (
+                          <option key={acc.account_id} value={acc.account_id}>
+                            {acc.account_code ? `[${acc.account_code}] ` : ''}{acc.account_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Details */}
                 <div>
                   <h3 className="font-semibold text-gray-700 mb-3">Details</h3>
@@ -669,36 +752,26 @@ export default function ZohoInventory() {
                   </div>
                 </div>
 
-                {/* GL Accounts (Read-only) */}
-                <div>
-                  <h3 className="font-semibold text-gray-700 mb-3">GL Accounts (from Zoho)</h3>
-                  <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Sales Account</label>
-                      <p className="text-sm font-medium">{editForm.account_name || '-'}</p>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Purchase Account</label>
-                      <p className="text-sm font-medium">{editForm.purchase_account_name || '-'}</p>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Inventory Account</label>
-                      <p className="text-sm font-medium">{editForm.inventory_account_name || '-'}</p>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Sales Tax</label>
-                      <p className="text-sm font-medium">
-                        {editForm.tax_name ? `${editForm.tax_name} (${editForm.tax_percentage}%)` : '-'}
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">Purchase Tax</label>
-                      <p className="text-sm font-medium">
-                        {editForm.purchase_tax_name ? `${editForm.purchase_tax_name} (${editForm.purchase_tax_percentage}%)` : '-'}
-                      </p>
+                {/* Tax Info (Read-only) */}
+                {(editForm.tax_name || editForm.purchase_tax_name) && (
+                  <div>
+                    <h3 className="font-semibold text-gray-700 mb-3">Tax Information</h3>
+                    <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Sales Tax</label>
+                        <p className="text-sm font-medium">
+                          {editForm.tax_name ? `${editForm.tax_name} (${editForm.tax_percentage}%)` : '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">Purchase Tax</label>
+                        <p className="text-sm font-medium">
+                          {editForm.purchase_tax_name ? `${editForm.purchase_tax_name} (${editForm.purchase_tax_percentage}%)` : '-'}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
 
@@ -712,7 +785,7 @@ export default function ZohoInventory() {
                 ) : (
                   <Save className="w-4 h-4 mr-2" />
                 )}
-                Save Changes
+                Save to Zoho
               </Button>
             </div>
           </div>

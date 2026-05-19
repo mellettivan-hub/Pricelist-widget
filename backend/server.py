@@ -1118,6 +1118,9 @@ async def get_zoho_items(
                 "category_name": item.get("category_name", ""),
                 "reorder_level": safe_float(item.get("reorder_level")),
                 "item_type": item.get("item_type", "inventory"),
+                # Account information
+                "account_name": item.get("account_name", ""),
+                "purchase_account_name": item.get("purchase_account_name", ""),
             })
         
         page_context = result.get("page_context", {})
@@ -1169,6 +1172,11 @@ async def get_all_zoho_items():
                 "category_name": item.get("category_name", ""),
                 "reorder_level": safe_float(item.get("reorder_level")),
                 "item_type": item.get("item_type", "inventory"),
+                # Account information
+                "account_name": item.get("account_name", ""),
+                "purchase_account_name": item.get("purchase_account_name", ""),
+                "account_id": item.get("account_id", ""),
+                "purchase_account_id": item.get("purchase_account_id", ""),
             })
         
         return {
@@ -1391,6 +1399,30 @@ class ItemUpdate(BaseModel):
     manufacturer: Optional[str] = None
     unit: Optional[str] = None
     reorder_level: Optional[float] = None
+    account_id: Optional[str] = None
+    purchase_account_id: Optional[str] = None
+
+
+@api_router.get("/zoho/accounts")
+async def get_zoho_accounts():
+    """Get chart of accounts from Zoho for dropdowns"""
+    try:
+        zoho = ZohoInventoryClient(db)
+        result = await zoho.get_chart_of_accounts()
+        
+        accounts = []
+        for acc in result.get("chartofaccounts", []):
+            accounts.append({
+                "account_id": str(acc.get("account_id", "")),
+                "account_name": acc.get("account_name", ""),
+                "account_type": acc.get("account_type", ""),
+                "account_code": acc.get("account_code", ""),
+            })
+        
+        return {"accounts": accounts}
+    except Exception as e:
+        logger.error(f"Error fetching Zoho accounts: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.put("/zoho/items/{item_id}")
@@ -1419,6 +1451,10 @@ async def update_zoho_item(item_id: str, update_data: ItemUpdate):
             data["unit"] = update_data.unit
         if update_data.reorder_level is not None:
             data["reorder_level"] = update_data.reorder_level
+        if update_data.account_id is not None:
+            data["account_id"] = update_data.account_id
+        if update_data.purchase_account_id is not None:
+            data["purchase_account_id"] = update_data.purchase_account_id
         
         if not data:
             raise HTTPException(status_code=400, detail="No fields to update")

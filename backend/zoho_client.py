@@ -188,3 +188,7 @@ class ZohoInventoryClient:
     async def get_item(self, item_id: str) -> Dict:
         """Get a single item by ID with full details"""
         return await self._make_request("GET", f"/items/{item_id}")
+    
+    async def get_chart_of_accounts(self) -> Dict:
+        """Get chart of accounts for account selection"""
+        return await self._make_request("GET", "/chartofaccounts")
