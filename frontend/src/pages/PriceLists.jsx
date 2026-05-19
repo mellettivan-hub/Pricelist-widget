@@ -8,6 +8,8 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const PriceLists = () => {
   const [priceLists, setPriceLists] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // {id, fileName}
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchPriceLists();
@@ -26,17 +28,23 @@ const PriceLists = () => {
   };
 
   const handleDelete = async (priceListId, fileName) => {
-    if (!window.confirm(`Delete "${fileName}"? This will also remove all products from this price list.`)) {
-      return;
-    }
+    setDeleteConfirm({ id: priceListId, fileName });
+  };
 
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
+    
+    setDeleting(true);
     try {
-      await axios.delete(`${API}/price-lists/${priceListId}`);
-      setPriceLists(priceLists.filter(p => p.id !== priceListId));
-      toast.success("Price list deleted");
+      await axios.delete(`${API}/price-lists/${deleteConfirm.id}`);
+      setPriceLists(priceLists.filter(p => p.id !== deleteConfirm.id));
+      toast.success("Price list deleted successfully");
+      setDeleteConfirm(null);
     } catch (error) {
       console.error("Failed to delete price list:", error);
       toast.error("Failed to delete price list");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -120,6 +128,53 @@ const PriceLists = () => {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" data-testid="delete-confirm-modal">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-red-100 rounded-full">
+                <Trash size={24} className="text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Delete Price List?</h3>
+            </div>
+            <p className="text-gray-600 mb-2">
+              Are you sure you want to delete <strong>"{deleteConfirm.fileName}"</strong>?
+            </p>
+            <p className="text-sm text-red-600 mb-6">
+              This will also remove all products from this price list. This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors flex items-center gap-2"
+                disabled={deleting}
+                data-testid="confirm-delete-btn"
+              >
+                {deleting ? (
+                  <>
+                    <span className="animate-spin">⏳</span>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash size={16} />
+                    Delete
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
