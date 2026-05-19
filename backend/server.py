@@ -1715,6 +1715,36 @@ async def get_zoho_accounts():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.get("/zoho/items/{item_id}/transactions")
+async def get_zoho_item_transactions(item_id: str):
+    """Get transaction history for a Zoho item (sales orders, purchase orders)"""
+    try:
+        zoho = ZohoInventoryClient(db)
+        
+        # Get item details first
+        item_result = await zoho.get_item(item_id)
+        item = item_result.get("item", {})
+        
+        # Get transactions
+        transactions = await zoho.get_item_transactions(item_id)
+        
+        return {
+            "item_id": item_id,
+            "item_name": item.get("name", ""),
+            "item_sku": item.get("sku", ""),
+            "stock_on_hand": item.get("stock_on_hand", 0),
+            "actual_available_stock": item.get("actual_available_stock", 0),
+            "has_transactions": transactions.get("has_transactions", False),
+            "sales_orders": transactions.get("sales_orders", []),
+            "purchase_orders": transactions.get("purchase_orders", []),
+            "total_sales_orders": transactions.get("total_sales_orders", 0),
+            "total_purchase_orders": transactions.get("total_purchase_orders", 0)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching transactions for item {item_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @api_router.put("/zoho/items/{item_id}")
 async def update_zoho_item(item_id: str, update_data: ItemUpdate):
     """Update item fields in Zoho Inventory with verification and price history tracking"""

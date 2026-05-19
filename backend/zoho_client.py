@@ -192,3 +192,51 @@ class ZohoInventoryClient:
     async def get_chart_of_accounts(self) -> Dict:
         """Get chart of accounts for account selection"""
         return await self._make_request("GET", "/chartofaccounts")
+    
+    async def get_item_transactions(self, item_id: str) -> Dict:
+        """Get transaction history for an item by checking sales orders and purchase orders"""
+        transactions = {
+            "item_id": item_id,
+            "sales_orders": [],
+            "purchase_orders": [],
+            "has_transactions": False
+        }
+        
+        try:
+            # Get sales orders containing this item
+            sales_result = await self._make_request("GET", "/salesorders", params={"item_id": item_id})
+            sales_orders = sales_result.get("salesorders", [])
+            transactions["sales_orders"] = [{
+                "order_id": so.get("salesorder_id"),
+                "order_number": so.get("salesorder_number"),
+                "customer_name": so.get("customer_name"),
+                "date": so.get("date"),
+                "status": so.get("status"),
+                "total": so.get("total")
+            } for so in sales_orders[:20]]  # Limit to recent 20
+        except Exception as e:
+            transactions["sales_orders_error"] = str(e)
+        
+        try:
+            # Get purchase orders containing this item
+            purchase_result = await self._make_request("GET", "/purchaseorders", params={"item_id": item_id})
+            purchase_orders = purchase_result.get("purchaseorders", [])
+            transactions["purchase_orders"] = [{
+                "order_id": po.get("purchaseorder_id"),
+                "order_number": po.get("purchaseorder_number"),
+                "vendor_name": po.get("vendor_name"),
+                "date": po.get("date"),
+                "status": po.get("status"),
+                "total": po.get("total")
+            } for po in purchase_orders[:20]]  # Limit to recent 20
+        except Exception as e:
+            transactions["purchase_orders_error"] = str(e)
+        
+        transactions["has_transactions"] = (
+            len(transactions.get("sales_orders", [])) > 0 or 
+            len(transactions.get("purchase_orders", [])) > 0
+        )
+        transactions["total_sales_orders"] = len(transactions.get("sales_orders", []))
+        transactions["total_purchase_orders"] = len(transactions.get("purchase_orders", []))
+        
+        return transactions

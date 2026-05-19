@@ -35,6 +35,10 @@ export default function ZohoInventory({ user }) {
   const [saveMessage, setSaveMessage] = useState(null);
   const [priceHistory, setPriceHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  
+  // Transaction history state
+  const [transactions, setTransactions] = useState(null);
+  const [loadingTransactions, setLoadingTransactions] = useState(false);
 
   // Log activity helper
   const logActivity = async (action, details, itemId = null, itemName = null) => {
@@ -388,6 +392,21 @@ export default function ZohoInventory({ user }) {
     setEditForm({});
     setSaveMessage(null);
     setPriceHistory([]);
+    setTransactions(null);
+  };
+
+  const fetchTransactions = async (itemId) => {
+    setLoadingTransactions(true);
+    try {
+      const res = await fetch(`${API_URL}/api/zoho/items/${itemId}/transactions`);
+      const data = await res.json();
+      setTransactions(data);
+    } catch (err) {
+      console.error('Failed to load transactions:', err);
+      setTransactions({ error: 'Failed to load transactions' });
+    } finally {
+      setLoadingTransactions(false);
+    }
   };
 
   const saveItem = async () => {
@@ -1245,6 +1264,83 @@ export default function ZohoInventory({ user }) {
                     </div>
                   </div>
                 )}
+
+                {/* Zoho Transaction History */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-gray-700 flex items-center gap-2">
+                      <ShoppingCart className="w-4 h-4" />
+                      Zoho Transaction History
+                    </h3>
+                    {!transactions && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => fetchTransactions(editingItem.item_id)}
+                        disabled={loadingTransactions}
+                      >
+                        {loadingTransactions ? 'Loading...' : 'Check Transactions'}
+                      </Button>
+                    )}
+                  </div>
+                  
+                  {transactions && (
+                    <div className="border rounded-lg p-4 bg-gray-50">
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div className="text-center p-3 bg-white rounded border">
+                          <p className="text-2xl font-bold text-blue-600">{transactions.total_sales_orders || 0}</p>
+                          <p className="text-xs text-gray-500">Sales Orders</p>
+                        </div>
+                        <div className="text-center p-3 bg-white rounded border">
+                          <p className="text-2xl font-bold text-green-600">{transactions.total_purchase_orders || 0}</p>
+                          <p className="text-xs text-gray-500">Purchase Orders</p>
+                        </div>
+                      </div>
+                      
+                      <div className={`text-center py-2 rounded ${
+                        transactions.has_transactions 
+                          ? 'bg-green-100 text-green-700' 
+                          : 'bg-amber-100 text-amber-700'
+                      }`}>
+                        {transactions.has_transactions 
+                          ? '✓ This item has transaction history' 
+                          : '⚠ No transaction history found'}
+                      </div>
+                      
+                      {transactions.sales_orders?.length > 0 && (
+                        <div className="mt-4">
+                          <p className="text-xs font-semibold text-gray-500 mb-2">RECENT SALES ORDERS</p>
+                          <div className="space-y-2">
+                            {transactions.sales_orders.slice(0, 3).map((so, idx) => (
+                              <div key={idx} className="text-sm bg-white p-2 rounded border">
+                                <span className="font-mono text-blue-600">{so.order_number}</span>
+                                <span className="mx-2">-</span>
+                                <span>{so.customer_name}</span>
+                                <span className="text-gray-400 ml-2">({so.date})</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {transactions.purchase_orders?.length > 0 && (
+                        <div className="mt-4">
+                          <p className="text-xs font-semibold text-gray-500 mb-2">RECENT PURCHASE ORDERS</p>
+                          <div className="space-y-2">
+                            {transactions.purchase_orders.slice(0, 3).map((po, idx) => (
+                              <div key={idx} className="text-sm bg-white p-2 rounded border">
+                                <span className="font-mono text-green-600">{po.order_number}</span>
+                                <span className="mx-2">-</span>
+                                <span>{po.vendor_name}</span>
+                                <span className="text-gray-400 ml-2">({po.date})</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
