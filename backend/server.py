@@ -1089,18 +1089,35 @@ async def get_zoho_items(
         zoho = ZohoInventoryClient(db)
         result = await zoho.get_items(page=page, per_page=per_page, status=status)
         
+        def safe_float(val, default=0.0):
+            """Safely convert value to float"""
+            if val is None or val == '':
+                return default
+            try:
+                return float(val)
+            except (ValueError, TypeError):
+                return default
+        
         items = []
         for item in result.get("items", []):
             items.append({
-                "item_id": str(item.get("item_id")),
+                "item_id": str(item.get("item_id", "")),
                 "name": item.get("name", ""),
                 "sku": item.get("sku", ""),
                 "description": item.get("description", ""),
-                "rate": float(item.get("rate", 0)),
-                "purchase_rate": float(item.get("purchase_rate", 0)),
+                "rate": safe_float(item.get("rate")),
+                "purchase_rate": safe_float(item.get("purchase_rate")),
                 "status": item.get("status", ""),
                 "brand": item.get("brand", ""),
-                "stock_on_hand": float(item.get("stock_on_hand", 0))
+                "manufacturer": item.get("manufacturer", ""),
+                "stock_on_hand": safe_float(item.get("stock_on_hand")),
+                "product_type": item.get("product_type", "goods"),
+                "is_sales_item": item.get("is_sales_item", True) if "is_sales_item" in item else item.get("can_be_sold", True),
+                "is_purchase_item": item.get("is_purchase_item", True) if "is_purchase_item" in item else item.get("can_be_purchased", True),
+                "unit": item.get("unit", ""),
+                "category_name": item.get("category_name", ""),
+                "reorder_level": safe_float(item.get("reorder_level")),
+                "item_type": item.get("item_type", "inventory"),
             })
         
         page_context = result.get("page_context", {})
@@ -1123,18 +1140,35 @@ async def get_all_zoho_items():
         zoho = ZohoInventoryClient(db)
         items = await zoho.get_all_active_items()
         
+        def safe_float(val, default=0.0):
+            """Safely convert value to float"""
+            if val is None or val == '':
+                return default
+            try:
+                return float(val)
+            except (ValueError, TypeError):
+                return default
+        
         formatted_items = []
         for item in items:
             formatted_items.append({
-                "item_id": str(item.get("item_id")),
+                "item_id": str(item.get("item_id", "")),
                 "name": item.get("name", ""),
                 "sku": item.get("sku", ""),
                 "description": item.get("description", ""),
-                "rate": float(item.get("rate", 0)),
-                "purchase_rate": float(item.get("purchase_rate", 0)),
+                "rate": safe_float(item.get("rate")),
+                "purchase_rate": safe_float(item.get("purchase_rate")),
                 "status": item.get("status", ""),
                 "brand": item.get("brand", ""),
-                "stock_on_hand": float(item.get("stock_on_hand", 0))
+                "manufacturer": item.get("manufacturer", ""),
+                "stock_on_hand": safe_float(item.get("stock_on_hand")),
+                "product_type": item.get("product_type", "goods"),
+                "is_sales_item": item.get("is_sales_item", True) if "is_sales_item" in item else item.get("can_be_sold", True),
+                "is_purchase_item": item.get("is_purchase_item", True) if "is_purchase_item" in item else item.get("can_be_purchased", True),
+                "unit": item.get("unit", ""),
+                "category_name": item.get("category_name", ""),
+                "reorder_level": safe_float(item.get("reorder_level")),
+                "item_type": item.get("item_type", "inventory"),
             })
         
         return {

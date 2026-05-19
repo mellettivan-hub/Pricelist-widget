@@ -2,32 +2,29 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { RefreshCw, Search, Package, ChevronLeft, ChevronRight, Filter, X } from 'lucide-react';
+import { 
+  RefreshCw, Search, Package, Filter, X, 
+  ShoppingCart, Tag, Boxes, TrendingUp, CheckCircle, Factory
+} from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 export default function ZohoInventory() {
-  const [items, setItems] = useState([]);
   const [allItems, setAllItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [loadingAll, setLoadingAll] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [fuzzySearch, setFuzzySearch] = useState(false);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
   const [brandFilter, setBrandFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
-  const perPage = 50;
 
-  const fetchItems = async (pageNum = 1) => {
+  const fetchAllItems = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/zoho/items?page=${pageNum}&per_page=${perPage}&status=active`);
+      const res = await fetch(`${API_URL}/api/zoho/items/all`);
       const data = await res.json();
-      setItems(data.items || []);
-      setHasMore(data.has_more_page || false);
-      setPage(pageNum);
+      setAllItems(data.items || []);
     } catch (err) {
       console.error('Failed to fetch items:', err);
     } finally {
@@ -35,31 +32,36 @@ export default function ZohoInventory() {
     }
   };
 
-  const fetchAllItems = async () => {
-    setLoadingAll(true);
-    try {
-      const res = await fetch(`${API_URL}/api/zoho/items/all`);
-      const data = await res.json();
-      setAllItems(data.items || []);
-    } catch (err) {
-      console.error('Failed to fetch all items:', err);
-    } finally {
-      setLoadingAll(false);
-    }
-  };
-
   useEffect(() => {
-    fetchItems(1);
-    fetchAllItems(); // Load all items for fuzzy search
+    fetchAllItems();
   }, []);
 
-  // Get unique brands for filter
-  const brands = useMemo(() => {
+  // Calculate stats
+  const stats = useMemo(() => {
+    const totalProducts = allItems.length;
+    const totalValue = allItems.reduce((sum, item) => sum + (item.rate * item.stock_on_hand), 0);
+    const inStock = allItems.filter(item => item.stock_on_hand > 0).length;
+    const outOfStock = allItems.filter(item => item.stock_on_hand === 0).length;
+    const goods = allItems.filter(item => item.product_type === 'goods').length;
+    const services = allItems.filter(item => item.product_type === 'service').length;
+    const sellable = allItems.filter(item => item.is_sales_item).length;
+    const purchasable = allItems.filter(item => item.is_purchase_item).length;
+    
+    return { totalProducts, totalValue, inStock, outOfStock, goods, services, sellable, purchasable };
+  }, [allItems]);
+
+  // Get unique brands and manufacturers for filters
+  const { brands, manufacturers } = useMemo(() => {
     const brandSet = new Set();
+    const mfgSet = new Set();
     allItems.forEach(item => {
       if (item.brand) brandSet.add(item.brand);
+      if (item.manufacturer) mfgSet.add(item.manufacturer);
     });
-    return Array.from(brandSet).sort();
+    return {
+      brands: Array.from(brandSet).sort(),
+      manufacturers: Array.from(mfgSet).sort()
+    };
   }, [allItems]);
 
   // Fuzzy match function
@@ -68,10 +70,8 @@ export default function ZohoInventory() {
     const textLower = text.toLowerCase();
     const queryLower = query.toLowerCase();
     
-    // Direct include check
     if (textLower.includes(queryLower)) return true;
     
-    // Fuzzy matching - check if all characters appear in order
     let queryIndex = 0;
     for (let i = 0; i < textLower.length && queryIndex < queryLower.length; i++) {
       if (textLower[i] === queryLower[queryIndex]) {
@@ -80,7 +80,6 @@ export default function ZohoInventory() {
     }
     if (queryIndex === queryLower.length) return true;
     
-    // Check for partial word matches
     const queryWords = queryLower.split(/\s+/);
     const textWords = textLower.split(/\s+/);
     return queryWords.every(qWord => 
@@ -88,25 +87,24 @@ export default function ZohoInventory() {
     );
   };
 
-  // Filter items based on search and filters
+  // Filter items
   const filteredItems = useMemo(() => {
-    const sourceItems = fuzzySearch || searchTerm.length >= 2 ? allItems : items;
-    
-    return sourceItems.filter(item => {
-      // Status filter
+    return allItems.filter(item => {
       if (statusFilter !== 'all' && item.status !== statusFilter) return false;
-      
-      // Brand filter
       if (brandFilter !== 'all' && item.brand !== brandFilter) return false;
+      if (typeFilter === 'goods' && item.product_type !== 'goods') return false;
+      if (typeFilter === 'service' && item.product_type !== 'service') return false;
+      if (typeFilter === 'instock' && item.stock_on_hand <= 0) return false;
+      if (typeFilter === 'outofstock' && item.stock_on_hand > 0) return false;
       
-      // Search filter
       if (searchTerm.length >= 2) {
         if (fuzzySearch) {
           return (
             fuzzyMatch(item.name, searchTerm) ||
             fuzzyMatch(item.sku, searchTerm) ||
             fuzzyMatch(item.description, searchTerm) ||
-            fuzzyMatch(item.brand, searchTerm)
+            fuzzyMatch(item.brand, searchTerm) ||
+            fuzzyMatch(item.manufacturer, searchTerm)
           );
         } else {
           const term = searchTerm.toLowerCase();
@@ -114,75 +112,155 @@ export default function ZohoInventory() {
             item.name?.toLowerCase().includes(term) ||
             item.sku?.toLowerCase().includes(term) ||
             item.description?.toLowerCase().includes(term) ||
-            item.brand?.toLowerCase().includes(term)
+            item.brand?.toLowerCase().includes(term) ||
+            item.manufacturer?.toLowerCase().includes(term)
           );
         }
       }
       
       return true;
     });
-  }, [items, allItems, searchTerm, fuzzySearch, statusFilter, brandFilter]);
+  }, [allItems, searchTerm, fuzzySearch, statusFilter, brandFilter, typeFilter]);
 
   const formatCurrency = (val) => {
     return `R ${(val || 0).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
-
-  const getStatusBadge = (status) => {
-    const statusColors = {
-      active: 'bg-green-100 text-green-700',
-      inactive: 'bg-gray-100 text-gray-600',
-      archived: 'bg-red-100 text-red-600',
-    };
-    return (
-      <span className={`px-2 py-0.5 rounded text-xs font-medium ${statusColors[status] || 'bg-gray-100 text-gray-600'}`}>
-        {status}
-      </span>
-    );
   };
 
   const clearFilters = () => {
     setSearchTerm('');
     setStatusFilter('all');
     setBrandFilter('all');
+    setTypeFilter('all');
     setFuzzySearch(false);
   };
 
-  const hasActiveFilters = searchTerm || statusFilter !== 'all' || brandFilter !== 'all';
+  const hasActiveFilters = searchTerm || statusFilter !== 'all' || brandFilter !== 'all' || typeFilter !== 'all';
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Zoho Inventory</h1>
-          <p className="text-gray-500 mt-1">
-            {loadingAll ? 'Loading all products...' : `${allItems.length} total active products`}
-          </p>
+          <p className="text-gray-500 mt-1">Manage and view your inventory products</p>
         </div>
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            onClick={() => setShowFilters(!showFilters)}
-            className={showFilters ? 'bg-blue-50' : ''}
-          >
-            <Filter className="w-4 h-4 mr-2" />
-            Filters
-          </Button>
-          <Button onClick={() => { fetchItems(page); fetchAllItems(); }} disabled={loading} variant="outline">
-            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
+        <Button onClick={fetchAllItems} disabled={loading} variant="outline">
+          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-white/20 rounded-lg">
+                <Package className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{loading ? '...' : stats.totalProducts.toLocaleString()}</p>
+                <p className="text-sm text-blue-100">Total Products</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-white/20 rounded-lg">
+                <Boxes className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{loading ? '...' : stats.inStock.toLocaleString()}</p>
+                <p className="text-sm text-green-100">In Stock</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-amber-500 to-amber-600 text-white">
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-white/20 rounded-lg">
+                <ShoppingCart className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{loading ? '...' : stats.sellable.toLocaleString()}</p>
+                <p className="text-sm text-amber-100">Sellable</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-white/20 rounded-lg">
+                <TrendingUp className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{loading ? '...' : formatCurrency(stats.totalValue).replace('R ', '')}</p>
+                <p className="text-sm text-purple-100">Stock Value</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Quick Filters */}
+      <div className="flex flex-wrap gap-2">
+        <Button 
+          variant={typeFilter === 'all' ? 'default' : 'outline'} 
+          size="sm"
+          onClick={() => setTypeFilter('all')}
+        >
+          All ({stats.totalProducts})
+        </Button>
+        <Button 
+          variant={typeFilter === 'goods' ? 'default' : 'outline'} 
+          size="sm"
+          onClick={() => setTypeFilter('goods')}
+        >
+          <Package className="w-3 h-3 mr-1" />
+          Goods ({stats.goods})
+        </Button>
+        <Button 
+          variant={typeFilter === 'service' ? 'default' : 'outline'} 
+          size="sm"
+          onClick={() => setTypeFilter('service')}
+        >
+          <Tag className="w-3 h-3 mr-1" />
+          Services ({stats.services})
+        </Button>
+        <Button 
+          variant={typeFilter === 'instock' ? 'default' : 'outline'} 
+          size="sm"
+          onClick={() => setTypeFilter('instock')}
+          className={typeFilter === 'instock' ? 'bg-green-600' : ''}
+        >
+          <CheckCircle className="w-3 h-3 mr-1" />
+          In Stock ({stats.inStock})
+        </Button>
+        <Button 
+          variant={typeFilter === 'outofstock' ? 'default' : 'outline'} 
+          size="sm"
+          onClick={() => setTypeFilter('outofstock')}
+          className={typeFilter === 'outofstock' ? 'bg-red-600' : ''}
+        >
+          Out of Stock ({stats.outOfStock})
+        </Button>
       </div>
 
       {/* Search and Filters */}
       <Card>
         <CardContent className="pt-4 space-y-4">
-          {/* Search Bar */}
           <div className="flex gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
-                placeholder="Search by name, SKU, description, or brand..."
+                placeholder="Search by name, SKU, description, brand, manufacturer..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -195,6 +273,14 @@ export default function ZohoInventory() {
             >
               {fuzzySearch ? '🔍 Fuzzy ON' : '🔍 Fuzzy OFF'}
             </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowFilters(!showFilters)}
+              className={showFilters ? 'bg-blue-50' : ''}
+            >
+              <Filter className="w-4 h-4 mr-2" />
+              Filters
+            </Button>
             {hasActiveFilters && (
               <Button variant="ghost" onClick={clearFilters}>
                 <X className="w-4 h-4 mr-1" />
@@ -203,7 +289,6 @@ export default function ZohoInventory() {
             )}
           </div>
 
-          {/* Filter Options */}
           {showFilters && (
             <div className="flex flex-wrap gap-4 pt-2 border-t">
               <div className="flex items-center gap-2">
@@ -225,7 +310,7 @@ export default function ZohoInventory() {
                   onChange={(e) => setBrandFilter(e.target.value)}
                   className="border rounded px-3 py-1.5 text-sm max-w-[200px]"
                 >
-                  <option value="all">All Brands</option>
+                  <option value="all">All Brands ({brands.length})</option>
                   {brands.map(brand => (
                     <option key={brand} value={brand}>{brand}</option>
                   ))}
@@ -234,25 +319,24 @@ export default function ZohoInventory() {
             </div>
           )}
 
-          {/* Search hint */}
           {fuzzySearch && (
             <p className="text-xs text-blue-600 bg-blue-50 px-3 py-1.5 rounded">
-              Fuzzy search enabled - will find partial matches and similar terms
+              🔍 Fuzzy search enabled - finds partial matches and similar terms
             </p>
           )}
         </CardContent>
       </Card>
 
-      {/* Items Table */}
+      {/* Products Table */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-lg flex items-center gap-2">
             <Package className="w-5 h-5" />
-            Products ({filteredItems.length} {hasActiveFilters ? 'filtered' : 'shown'})
+            Products ({filteredItems.length.toLocaleString()} {hasActiveFilters ? 'filtered' : 'total'})
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {loading && !allItems.length ? (
+          {loading ? (
             <div className="space-y-2">
               {[1,2,3,4,5].map(i => (
                 <div key={i} className="animate-pulse h-20 bg-gray-100 rounded"></div>
@@ -275,11 +359,14 @@ export default function ZohoInventory() {
                   <tr className="border-b bg-gray-50">
                     <th className="text-left p-3 font-semibold">SKU</th>
                     <th className="text-left p-3 font-semibold">Product Name</th>
-                    <th className="text-left p-3 font-semibold">Description</th>
+                    <th className="text-left p-3 font-semibold">Type</th>
                     <th className="text-left p-3 font-semibold">Brand</th>
+                    <th className="text-left p-3 font-semibold">Manufacturer</th>
                     <th className="text-center p-3 font-semibold">Status</th>
-                    <th className="text-right p-3 font-semibold">Cost Price</th>
-                    <th className="text-right p-3 font-semibold">Selling Price</th>
+                    <th className="text-center p-3 font-semibold">Sellable</th>
+                    <th className="text-center p-3 font-semibold">Purchasable</th>
+                    <th className="text-right p-3 font-semibold bg-blue-50">Cost Price</th>
+                    <th className="text-right p-3 font-semibold bg-green-50">Selling Price</th>
                     <th className="text-right p-3 font-semibold">Stock</th>
                   </tr>
                 </thead>
@@ -293,32 +380,75 @@ export default function ZohoInventory() {
                       </td>
                       <td className="p-3">
                         <div className="font-medium text-gray-900">{item.name}</div>
+                        {item.description && (
+                          <div className="text-xs text-gray-500 truncate max-w-xs" title={item.description}>
+                            {item.description}
+                          </div>
+                        )}
                       </td>
                       <td className="p-3">
-                        <div className="text-gray-600 text-xs max-w-xs truncate" title={item.description}>
-                          {item.description || '-'}
-                        </div>
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                          item.product_type === 'goods' 
+                            ? 'bg-blue-100 text-blue-700' 
+                            : 'bg-purple-100 text-purple-700'
+                        }`}>
+                          {item.product_type === 'goods' ? '📦 Goods' : '🔧 Service'}
+                        </span>
                       </td>
                       <td className="p-3">
                         {item.brand ? (
-                          <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-medium">
+                          <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-xs font-medium">
                             {item.brand}
                           </span>
                         ) : (
                           <span className="text-gray-400">-</span>
                         )}
                       </td>
-                      <td className="p-3 text-center">
-                        {getStatusBadge(item.status)}
+                      <td className="p-3">
+                        {item.manufacturer ? (
+                          <span className="flex items-center gap-1 text-xs text-gray-600">
+                            <Factory className="w-3 h-3" />
+                            {item.manufacturer}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
                       </td>
-                      <td className="p-3 text-right font-medium text-gray-700">
+                      <td className="p-3 text-center">
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                          item.status === 'active' 
+                            ? 'bg-green-100 text-green-700' 
+                            : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {item.status}
+                        </span>
+                      </td>
+                      <td className="p-3 text-center">
+                        {item.is_sales_item ? (
+                          <span className="text-green-600">✓</span>
+                        ) : (
+                          <span className="text-gray-400">✗</span>
+                        )}
+                      </td>
+                      <td className="p-3 text-center">
+                        {item.is_purchase_item ? (
+                          <span className="text-green-600">✓</span>
+                        ) : (
+                          <span className="text-gray-400">✗</span>
+                        )}
+                      </td>
+                      <td className="p-3 text-right font-medium text-gray-700 bg-blue-50/30">
                         {formatCurrency(item.purchase_rate)}
                       </td>
-                      <td className="p-3 text-right font-medium text-green-600">
+                      <td className="p-3 text-right font-medium text-green-600 bg-green-50/30">
                         {formatCurrency(item.rate)}
                       </td>
                       <td className="p-3 text-right">
-                        <span className={`font-medium ${item.stock_on_hand > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                        <span className={`font-medium ${
+                          item.stock_on_hand > 0 
+                            ? 'text-green-600' 
+                            : 'text-red-500'
+                        }`}>
                           {item.stock_on_hand}
                         </span>
                       </td>
@@ -329,34 +459,9 @@ export default function ZohoInventory() {
               
               {filteredItems.length > 100 && (
                 <div className="text-center py-4 text-gray-500 text-sm border-t">
-                  Showing first 100 of {filteredItems.length} results. Use search to narrow down.
+                  Showing first 100 of {filteredItems.length.toLocaleString()} results. Use search to narrow down.
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Pagination - only show when not searching */}
-          {!searchTerm && !hasActiveFilters && (
-            <div className="flex justify-between items-center mt-4 pt-4 border-t">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => fetchItems(page - 1)}
-                disabled={page <= 1 || loading}
-              >
-                <ChevronLeft className="w-4 h-4 mr-1" />
-                Previous
-              </Button>
-              <span className="text-sm text-gray-500">Page {page}</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => fetchItems(page + 1)}
-                disabled={!hasMore || loading}
-              >
-                Next
-                <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
             </div>
           )}
         </CardContent>
