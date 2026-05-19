@@ -198,28 +198,43 @@ async def get_activity_stats():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# Use MongoDB for temporary file storage instead of memory
+# Use file system for temporary file storage (MongoDB has 16MB limit)
+import tempfile
+import os
+
+TEMP_DIR = "/tmp/pricelist_uploads"
+os.makedirs(TEMP_DIR, exist_ok=True)
+
 async def store_temp_file(file_id: str, content: bytes, filename: str):
-    """Store file temporarily in MongoDB"""
-    import base64
-    await db.temp_files.delete_many({"file_id": file_id})  # Clean any existing
+    """Store file temporarily on disk"""
+    file_path = os.path.join(TEMP_DIR, f"{file_id}.xlsx")
+    with open(file_path, 'wb') as f:
+        f.write(content)
+    # Also store metadata in MongoDB
+    await db.temp_files.delete_many({"file_id": file_id})
     await db.temp_files.insert_one({
         "file_id": file_id,
-        "content": base64.b64encode(content).decode('utf-8'),
+        "file_path": file_path,
         "filename": filename,
         "created_at": datetime.now(timezone.utc).isoformat()
     })
 
 async def get_temp_file(file_id: str) -> Optional[bytes]:
-    """Retrieve temporary file from MongoDB"""
-    import base64
+    """Retrieve temporary file from disk"""
     doc = await db.temp_files.find_one({"file_id": file_id})
-    if doc:
-        return base64.b64decode(doc["content"])
+    if doc and os.path.exists(doc.get("file_path", "")):
+        with open(doc["file_path"], 'rb') as f:
+            return f.read()
     return None
 
 async def delete_temp_file(file_id: str):
-    """Delete temporary file from MongoDB"""
+    """Delete temporary file from disk and MongoDB"""
+    doc = await db.temp_files.find_one({"file_id": file_id})
+    if doc and doc.get("file_path") and os.path.exists(doc["file_path"]):
+        try:
+            os.remove(doc["file_path"])
+        except:
+            pass
     await db.temp_files.delete_one({"file_id": file_id})
 
 
