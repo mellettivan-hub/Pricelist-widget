@@ -21,6 +21,8 @@ const Vendors = () => {
   const [newVendor, setNewVendor] = useState({ name: "", contact_email: "", contact_phone: "" });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // {id, name}
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchVendors();
@@ -60,17 +62,23 @@ const Vendors = () => {
   };
 
   const handleDeleteVendor = async (vendorId, vendorName) => {
-    if (!window.confirm(`Delete "${vendorName}"? This will also delete all associated price lists and products.`)) {
-      return;
-    }
+    setDeleteConfirm({ id: vendorId, name: vendorName });
+  };
 
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
+    
+    setDeleting(true);
     try {
-      await axios.delete(`${API}/vendors/${vendorId}`);
-      setVendors(vendors.filter(v => v.id !== vendorId));
-      toast.success("Vendor deleted");
+      await axios.delete(`${API}/vendors/${deleteConfirm.id}`);
+      setVendors(vendors.filter(v => v.id !== deleteConfirm.id));
+      toast.success("Vendor deleted successfully");
+      setDeleteConfirm(null);
     } catch (error) {
       console.error("Failed to delete vendor:", error);
       toast.error("Failed to delete vendor");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -227,6 +235,53 @@ const Vendors = () => {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" data-testid="delete-confirm-modal">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md mx-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-red-100 rounded-full">
+                <Trash size={24} className="text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Delete Vendor?</h3>
+            </div>
+            <p className="text-gray-600 mb-2">
+              Are you sure you want to delete <strong>"{deleteConfirm.name}"</strong>?
+            </p>
+            <p className="text-sm text-red-600 mb-6">
+              This will also delete all associated price lists and products. This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors flex items-center gap-2"
+                disabled={deleting}
+                data-testid="confirm-delete-btn"
+              >
+                {deleting ? (
+                  <>
+                    <span className="animate-spin">⏳</span>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash size={16} />
+                    Delete
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
