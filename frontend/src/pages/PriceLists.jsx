@@ -139,55 +139,57 @@ const PriceLists = () => {
                 Search Results for "{searchResults.query}"
               </h2>
               <span className="text-sm text-zinc-500">
-                {searchResults.total_results} products found ({searchResults.total_vendor_entries} vendor entries)
+                {searchResults.total_results} products found
               </span>
             </div>
 
             {searchResults.results.length > 0 ? (
-              <div className="space-y-4 max-h-[500px] overflow-y-auto">
+              <div className="space-y-6 max-h-[600px] overflow-y-auto">
                 {searchResults.results.map((product, idx) => (
-                  <div key={idx} className="border border-zinc-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h3 className="font-mono font-bold text-blue-600">{product.product_code}</h3>
-                        <p className="text-sm text-zinc-600">{product.description}</p>
-                      </div>
-                      <div className="text-right">
-                        <div className="flex items-center gap-1 text-green-600">
-                          <ArrowDown size={14} weight="bold" />
-                          <span className="text-xs font-medium">CHEAPEST</span>
-                        </div>
-                        <p className="font-bold text-lg">R {product.cheapest_price?.toFixed(2)}</p>
-                        <p className="text-xs text-zinc-500">{product.cheapest_vendor}</p>
-                      </div>
+                  <div key={idx} className="border border-zinc-200 rounded-lg overflow-hidden">
+                    {/* Product Header */}
+                    <div className="bg-zinc-100 p-3 border-b border-zinc-200">
+                      <h3 className="font-mono font-bold text-blue-600 text-lg">{product.product_code}</h3>
+                      <p className="text-sm text-zinc-600">{product.description}</p>
                     </div>
                     
-                    {/* Vendor price comparison */}
-                    <div className="bg-zinc-50 rounded p-3">
-                      <p className="text-xs font-semibold text-zinc-500 mb-2">
-                        PRICE COMPARISON ({product.vendor_count} vendors)
-                      </p>
-                      <div className="space-y-2">
+                    {/* All Vendors/Pricelists Table */}
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-zinc-50 border-b border-zinc-200">
+                          <th className="text-left p-3 font-semibold">Vendor / Pricelist</th>
+                          <th className="text-right p-3 font-semibold">Cost Price</th>
+                          <th className="text-right p-3 font-semibold">Selling Price</th>
+                        </tr>
+                      </thead>
+                      <tbody>
                         {product.vendors.map((vendor, vIdx) => (
-                          <div key={vIdx} className="flex items-center justify-between text-sm">
-                            <span className={`flex items-center gap-2 ${vIdx === 0 ? 'text-green-700 font-medium' : 'text-zinc-600'}`}>
-                              {vIdx === 0 && <Tag size={14} weight="fill" className="text-green-600" />}
-                              {vendor.vendor_name}
-                            </span>
-                            <div className="text-right">
-                              <span className={`font-mono ${vIdx === 0 ? 'text-green-700 font-bold' : 'text-zinc-700'}`}>
-                                R {vendor.price?.toFixed(2)}
-                              </span>
-                              {vendor.selling_price && (
-                                <span className="text-xs text-zinc-400 ml-2">
-                                  (Sell: R {vendor.selling_price?.toFixed(2)})
+                          <tr 
+                            key={vIdx} 
+                            className={`border-b border-zinc-100 ${vIdx === 0 ? 'bg-green-50' : 'hover:bg-zinc-50'}`}
+                          >
+                            <td className="p-3">
+                              <div className="flex items-center gap-2">
+                                <span className={`font-medium ${vIdx === 0 ? 'text-green-700' : 'text-zinc-700'}`}>
+                                  {vendor.vendor_name}
                                 </span>
-                              )}
-                            </div>
-                          </div>
+                                {vIdx === 0 && (
+                                  <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded font-bold">
+                                    CHEAPEST
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className={`p-3 text-right font-mono ${vIdx === 0 ? 'font-bold text-green-700 text-base' : 'text-zinc-700'}`}>
+                              R {vendor.price?.toFixed(2)}
+                            </td>
+                            <td className="p-3 text-right font-mono text-zinc-500">
+                              R {vendor.selling_price?.toFixed(2)}
+                            </td>
+                          </tr>
                         ))}
-                      </div>
-                    </div>
+                      </tbody>
+                    </table>
                   </div>
                 ))}
               </div>
