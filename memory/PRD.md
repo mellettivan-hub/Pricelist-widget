@@ -138,16 +138,25 @@ ZOHO_API_DOMAIN=https://www.zohoapis.com
 - [x] Dashboard with connection status and stats
 - [x] Zoho Inventory browser with search
 - [x] Match & Update page with filtering and selection
+- [x] Login system (pseudo-auth with shared password F0rbt3ch)
+- [x] Activity Logs page with user action tracking
+- [x] **Bulk Edit in Zoho Inventory** - Select multiple items and update Brand/Manufacturer/GL Accounts (Dec 2025)
+- [x] **Brand/Manufacturer Dropdowns** - Converted from text inputs to dropdown menus populated with existing values (Dec 2025)
+- [x] **Save Verification** - Double-check confirmation after saving that update went through to Zoho (Dec 2025)
 
 ## Future Enhancements (Backlog)
-- [ ] P1: Price history tracking over time
-- [ ] P1: Scheduled automatic price sync
-- [ ] P2: Export comparison reports to Excel
-- [ ] P2: Email notifications for significant price changes
+- [ ] P1: Log pricelist uploads with file details in Activity Logs
+- [ ] P1: Price history tracking per item
+- [ ] P2: Export activity logs to Excel
+- [ ] P2: Email notifications for bulk price updates
+- [ ] P2: Role-based access (admin vs viewer)
+- [ ] P2: Refactor server.py into modular route files (1700+ lines currently)
 - [ ] P3: Multi-organization Zoho support
 - [ ] P3: Custom matching rules per vendor
 
-## Zoho API Credentials
+## Login Credentials
+- **Username**: Any name (e.g., Ivan, Admin, etc.)
+- **Password**: F0rbt3ch
 - Client ID: 1000.Y9885DJCMOUXHU1JLOZYCC255A21PP
 - Organization ID: 721559909
 - Data Center: US (zoho.com)
