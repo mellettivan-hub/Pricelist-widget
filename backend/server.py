@@ -1157,7 +1157,11 @@ async def match_zoho_with_pricelists(
         zoho_items = await zoho.get_all_active_items()
         
         # Get all products from our database (from uploaded pricelists)
-        db_products = await db.products.find({}, {"_id": 0}).to_list(100000)
+        # Exclude test vendor data
+        db_products = await db.products.find(
+            {"vendor_name": {"$not": {"$regex": "test", "$options": "i"}}},
+            {"_id": 0}
+        ).to_list(100000)
         
         if not db_products:
             return {
