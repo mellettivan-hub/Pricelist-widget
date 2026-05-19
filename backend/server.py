@@ -1008,21 +1008,64 @@ async def get_price_lists():
 @api_router.get("/price-lists/search")
 async def search_all_pricelists(
     q: str = Query(..., min_length=1, description="Search query"),
+    fuzzy: bool = Query(False, description="Enable fuzzy search"),
     limit: int = Query(100, ge=1, le=500)
 ):
-    """Search products across ALL price lists"""
+    """Search products across ALL price lists with optional fuzzy matching"""
     try:
         search_term = q.strip()
         
-        # Search by product code or description (case-insensitive)
-        query = {
-            "$or": [
-                {"product_code": {"$regex": search_term, "$options": "i"}},
-                {"description": {"$regex": search_term, "$options": "i"}}
-            ]
-        }
+        # Normalize search term for fuzzy matching
+        normalized_search = normalize_product_code(search_term)
         
-        products = await db.products.find(query, {"_id": 0}).limit(limit).to_list(limit)
+        if fuzzy:
+            # Fuzzy search - get more products and filter by similarity
+            # First try exact/contains match
+            query = {
+                "$or": [
+                    {"product_code": {"$regex": search_term, "$options": "i"}},
+                    {"description": {"$regex": search_term, "$options": "i"}}
+                ]
+            }
+            products = await db.products.find(query, {"_id": 0}).limit(limit).to_list(limit)
+            
+            # If few results, do fuzzy search on all products
+            if len(products) < 10:
+                all_products = await db.products.find({}, {"_id": 0}).to_list(5000)
+                
+                fuzzy_matches = []
+                for p in all_products:
+                    code = p.get("product_code", "")
+                    desc = p.get("description", "")
+                    normalized_code = normalize_product_code(code)
+                    
+                    # Calculate similarity scores
+                    code_ratio = fuzz.ratio(normalized_search, normalized_code)
+                    partial_ratio = fuzz.partial_ratio(search_term.upper(), code.upper())
+                    desc_ratio = fuzz.partial_ratio(search_term.upper(), desc.upper())
+                    
+                    # Accept if any score is above threshold
+                    max_score = max(code_ratio, partial_ratio, desc_ratio)
+                    if max_score >= 60:  # 60% similarity threshold
+                        p['_match_score'] = max_score
+                        fuzzy_matches.append(p)
+                
+                # Sort by match score and take top results
+                fuzzy_matches.sort(key=lambda x: x.get('_match_score', 0), reverse=True)
+                products = fuzzy_matches[:limit]
+                
+                # Remove internal score field
+                for p in products:
+                    p.pop('_match_score', None)
+        else:
+            # Standard regex search
+            query = {
+                "$or": [
+                    {"product_code": {"$regex": search_term, "$options": "i"}},
+                    {"description": {"$regex": search_term, "$options": "i"}}
+                ]
+            }
+            products = await db.products.find(query, {"_id": 0}).limit(limit).to_list(limit)
         
         # Group by product code to show price comparison
         grouped = {}
@@ -1056,6 +1099,7 @@ async def search_all_pricelists(
         
         return {
             "query": search_term,
+            "fuzzy_enabled": fuzzy,
             "total_results": len(results),
             "total_vendor_entries": len(products),
             "results": results

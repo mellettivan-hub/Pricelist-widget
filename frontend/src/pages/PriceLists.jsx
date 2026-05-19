@@ -15,6 +15,7 @@ const PriceLists = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState(null);
   const [searching, setSearching] = useState(false);
+  const [fuzzySearch, setFuzzySearch] = useState(false);
 
   useEffect(() => {
     fetchPriceLists();
@@ -62,7 +63,7 @@ const PriceLists = () => {
     
     setSearching(true);
     try {
-      const response = await axios.get(`${API}/price-lists/search?q=${encodeURIComponent(searchQuery)}`);
+      const response = await axios.get(`${API}/price-lists/search?q=${encodeURIComponent(searchQuery)}&fuzzy=${fuzzySearch}`);
       setSearchResults(response.data);
     } catch (error) {
       console.error("Search failed:", error);
@@ -98,8 +99,8 @@ const PriceLists = () => {
       <div className="p-6">
         {/* Search Section */}
         <div className="card mb-6">
-          <form onSubmit={handleSearch} className="flex gap-3">
-            <div className="relative flex-1">
+          <form onSubmit={handleSearch} className="flex gap-3 flex-wrap">
+            <div className="relative flex-1 min-w-[250px]">
               <MagnifyingGlass size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
               <input
                 type="text"
@@ -110,6 +111,15 @@ const PriceLists = () => {
                 data-testid="search-input"
               />
             </div>
+            <label className="flex items-center gap-2 px-3 py-2 border border-zinc-300 bg-white cursor-pointer hover:bg-zinc-50">
+              <input
+                type="checkbox"
+                checked={fuzzySearch}
+                onChange={(e) => setFuzzySearch(e.target.checked)}
+                className="w-4 h-4 accent-blue-600"
+              />
+              <span className="text-sm font-medium text-zinc-700">Fuzzy Search</span>
+            </label>
             <button
               type="submit"
               disabled={searching || !searchQuery.trim()}
@@ -128,6 +138,11 @@ const PriceLists = () => {
               </button>
             )}
           </form>
+          <p className="text-xs text-zinc-500 mt-2">
+            {fuzzySearch 
+              ? "Fuzzy search enabled - finds similar product codes even with slight differences" 
+              : "Exact search - matches product codes and descriptions containing your search term"}
+          </p>
         </div>
 
         {/* Search Results */}
