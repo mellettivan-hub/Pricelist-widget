@@ -4,12 +4,12 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { 
   RefreshCw, Search, Package, Filter, X, 
-  ShoppingCart, Tag, Boxes, TrendingUp, CheckCircle, Factory, Edit, Save, BookOpen
+  ShoppingCart, Tag, Boxes, TrendingUp, CheckCircle, Factory, Edit, Save, BookOpen, CheckSquare
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
-export default function ZohoInventory() {
+export default function ZohoInventory({ user }) {
   const [allItems, setAllItems] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,12 +20,39 @@ export default function ZohoInventory() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
   
+  // Selection state for bulk edit
+  const [selectedItems, setSelectedItems] = useState(new Set());
+  const [showBulkEdit, setShowBulkEdit] = useState(false);
+  const [bulkForm, setBulkForm] = useState({});
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [bulkMessage, setBulkMessage] = useState(null);
+  
   // Edit modal state
   const [editingItem, setEditingItem] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState(null);
+
+  // Log activity helper
+  const logActivity = async (action, details, itemId = null, itemName = null) => {
+    try {
+      await fetch(`${API_URL}/api/activity/log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: user || 'Unknown',
+          action,
+          details,
+          item_id: itemId,
+          item_name: itemName,
+          timestamp: new Date().toISOString()
+        })
+      });
+    } catch (e) {
+      console.error('Failed to log activity:', e);
+    }
+  };
 
   const fetchAllItems = async () => {
     setLoading(true);
@@ -69,25 +96,19 @@ export default function ZohoInventory() {
     return { totalProducts, totalValue, inStock, outOfStock, goods, services, sellable, purchasable };
   }, [allItems]);
 
-  // Get unique brands
-  const brands = useMemo(() => {
+  // Get unique brands and manufacturers for dropdowns
+  const { brands, manufacturers } = useMemo(() => {
     const brandSet = new Set();
+    const mfgSet = new Set();
     allItems.forEach(item => {
       if (item.brand) brandSet.add(item.brand);
+      if (item.manufacturer) mfgSet.add(item.manufacturer);
     });
-    return Array.from(brandSet).sort();
+    return {
+      brands: Array.from(brandSet).sort(),
+      manufacturers: Array.from(mfgSet).sort()
+    };
   }, [allItems]);
-
-  // Filter accounts by type for dropdowns
-  const salesAccounts = useMemo(() => 
-    accounts.filter(a => a.account_type === 'income' || a.account_type === 'other_income' || a.account_name.toLowerCase().includes('sales')),
-    [accounts]
-  );
-  
-  const purchaseAccounts = useMemo(() => 
-    accounts.filter(a => a.account_type === 'expense' || a.account_type === 'cost_of_goods_sold' || a.account_name.toLowerCase().includes('cost') || a.account_name.toLowerCase().includes('purchase')),
-    [accounts]
-  );
 
   // Fuzzy match function
   const fuzzyMatch = (text, query) => {
@@ -161,7 +182,123 @@ export default function ZohoInventory() {
 
   const hasActiveFilters = searchTerm || statusFilter !== 'all' || brandFilter !== 'all' || typeFilter !== 'all';
 
-  // Edit functions
+  // Selection functions
+  const toggleSelection = (itemId) => {
+    const newSelected = new Set(selectedItems);
+    if (newSelected.has(itemId)) {
+      newSelected.delete(itemId);
+    } else {
+      newSelected.add(itemId);
+    }
+    setSelectedItems(newSelected);
+  };
+
+  const selectAll = () => {
+    const visibleIds = filteredItems.slice(0, 100).map(item => item.item_id);
+    setSelectedItems(new Set(visibleIds));
+  };
+
+  const clearSelection = () => {
+    setSelectedItems(new Set());
+  };
+
+  // Bulk Edit functions
+  const openBulkEdit = () => {
+    setBulkForm({
+      brand: '',
+      manufacturer: '',
+      account_id: '',
+      purchase_account_id: '',
+    });
+    setBulkMessage(null);
+    setShowBulkEdit(true);
+  };
+
+  const closeBulkEdit = () => {
+    setShowBulkEdit(false);
+    setBulkForm({});
+    setBulkMessage(null);
+  };
+
+  const saveBulkChanges = async () => {
+    if (selectedItems.size === 0) return;
+    
+    setBulkSaving(true);
+    setBulkMessage(null);
+    
+    // Build update data - only include fields that were set
+    const updateData = {};
+    if (bulkForm.brand) updateData.brand = bulkForm.brand;
+    if (bulkForm.manufacturer) updateData.manufacturer = bulkForm.manufacturer;
+    if (bulkForm.account_id) updateData.account_id = bulkForm.account_id;
+    if (bulkForm.purchase_account_id) updateData.purchase_account_id = bulkForm.purchase_account_id;
+    
+    if (Object.keys(updateData).length === 0) {
+      setBulkMessage({ type: 'error', text: 'Please select at least one field to update' });
+      setBulkSaving(false);
+      return;
+    }
+    
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for (const itemId of selectedItems) {
+      try {
+        const res = await fetch(`${API_URL}/api/zoho/items/${itemId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updateData)
+        });
+        
+        const result = await res.json();
+        if (result.success) {
+          successCount++;
+        } else {
+          errorCount++;
+        }
+      } catch (err) {
+        errorCount++;
+      }
+    }
+    
+    // Log the bulk update
+    const changes = [];
+    if (bulkForm.brand) changes.push(`Brand: ${bulkForm.brand}`);
+    if (bulkForm.manufacturer) changes.push(`Manufacturer: ${bulkForm.manufacturer}`);
+    if (bulkForm.account_id) changes.push(`Sales Account updated`);
+    if (bulkForm.purchase_account_id) changes.push(`Purchase Account updated`);
+    
+    await logActivity(
+      'BULK_UPDATE',
+      `Bulk updated ${successCount} items - ${changes.join(', ')}`,
+      null,
+      null
+    );
+    
+    setBulkMessage({
+      type: successCount > 0 ? 'success' : 'error',
+      text: `Updated ${successCount} items${errorCount > 0 ? `, ${errorCount} failed` : ''}`
+    });
+    
+    setBulkSaving(false);
+    
+    if (successCount > 0) {
+      // Update local state
+      setAllItems(prev => prev.map(item => {
+        if (selectedItems.has(item.item_id)) {
+          return { ...item, ...updateData };
+        }
+        return item;
+      }));
+      
+      setTimeout(() => {
+        closeBulkEdit();
+        clearSelection();
+      }, 1500);
+    }
+  };
+
+  // Single Edit functions
   const openEditModal = async (item) => {
     setEditingItem(item);
     setLoadingDetails(true);
@@ -180,7 +317,6 @@ export default function ZohoInventory() {
         manufacturer: data.manufacturer || '',
         unit: data.unit || '',
         reorder_level: data.reorder_level || 0,
-        // Account info
         account_id: data.account_id || '',
         account_name: data.account_name || '',
         purchase_account_id: data.purchase_account_id || '',
@@ -236,7 +372,6 @@ export default function ZohoInventory() {
         reorder_level: parseFloat(editForm.reorder_level) || 0,
       };
       
-      // Only include account IDs if they were changed
       if (editForm.account_id) {
         updateData.account_id = editForm.account_id;
       }
@@ -254,7 +389,21 @@ export default function ZohoInventory() {
       
       if (result.success) {
         setSaveMessage({ type: 'success', text: 'Item updated successfully in Zoho!' });
-        // Update local state
+        
+        const changes = [];
+        if (editForm.name !== editingItem.name) changes.push(`Name: ${editForm.name}`);
+        if (parseFloat(editForm.rate) !== editingItem.rate) changes.push(`Selling: R${editForm.rate}`);
+        if (parseFloat(editForm.purchase_rate) !== editingItem.purchase_rate) changes.push(`Cost: R${editForm.purchase_rate}`);
+        if (editForm.brand !== editingItem.brand) changes.push(`Brand: ${editForm.brand}`);
+        if (editForm.manufacturer !== editingItem.manufacturer) changes.push(`Manufacturer: ${editForm.manufacturer}`);
+        
+        await logActivity(
+          'UPDATE_ITEM',
+          changes.length > 0 ? `Updated: ${changes.join(', ')}` : 'Item updated',
+          editingItem.item_id,
+          editingItem.name
+        );
+        
         setAllItems(prev => prev.map(item => 
           item.item_id === editingItem.item_id 
             ? { 
@@ -350,6 +499,29 @@ export default function ZohoInventory() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Bulk Edit Bar - Shows when items are selected */}
+      {selectedItems.size > 0 && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <CheckSquare className="w-5 h-5 text-blue-600" />
+                <span className="font-semibold text-blue-800">{selectedItems.size} items selected</span>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={clearSelection}>
+                  Clear Selection
+                </Button>
+                <Button size="sm" onClick={openBulkEdit} className="bg-blue-600 hover:bg-blue-700">
+                  <Edit className="w-4 h-4 mr-1" />
+                  Bulk Edit Selected
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Quick Filters */}
       <div className="flex flex-wrap gap-2">
@@ -466,10 +638,15 @@ export default function ZohoInventory() {
       {/* Products Table */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Package className="w-5 h-5" />
-            Products ({filteredItems.length.toLocaleString()} {hasActiveFilters ? 'filtered' : 'total'})
-          </CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Package className="w-5 h-5" />
+              Products ({filteredItems.length.toLocaleString()} {hasActiveFilters ? 'filtered' : 'total'})
+            </CardTitle>
+            <Button variant="outline" size="sm" onClick={selectAll}>
+              Select All Visible
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -488,23 +665,28 @@ export default function ZohoInventory() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-gray-50">
+                    <th className="p-3 w-10">
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.size === Math.min(filteredItems.length, 100) && filteredItems.length > 0}
+                        onChange={() => {
+                          if (selectedItems.size === Math.min(filteredItems.length, 100)) {
+                            clearSelection();
+                          } else {
+                            selectAll();
+                          }
+                        }}
+                        className="rounded"
+                      />
+                    </th>
                     <th className="text-left p-3 font-semibold w-10">Edit</th>
                     <th className="text-left p-3 font-semibold">SKU</th>
                     <th className="text-left p-3 font-semibold">Product Name</th>
                     <th className="text-left p-3 font-semibold">Type</th>
                     <th className="text-left p-3 font-semibold">Brand</th>
-                    <th className="text-left p-3 font-semibold bg-indigo-50">
-                      <div className="flex items-center gap-1">
-                        <BookOpen className="w-3 h-3" />
-                        Sales Account
-                      </div>
-                    </th>
-                    <th className="text-left p-3 font-semibold bg-orange-50">
-                      <div className="flex items-center gap-1">
-                        <BookOpen className="w-3 h-3" />
-                        Purchase Account
-                      </div>
-                    </th>
+                    <th className="text-left p-3 font-semibold">Manufacturer</th>
+                    <th className="text-left p-3 font-semibold bg-indigo-50">Sales Account</th>
+                    <th className="text-left p-3 font-semibold bg-orange-50">Purchase Account</th>
                     <th className="text-right p-3 font-semibold bg-blue-50">Cost Price</th>
                     <th className="text-right p-3 font-semibold bg-green-50">Selling Price</th>
                     <th className="text-right p-3 font-semibold">Stock</th>
@@ -512,7 +694,15 @@ export default function ZohoInventory() {
                 </thead>
                 <tbody>
                   {filteredItems.slice(0, 100).map((item) => (
-                    <tr key={item.item_id} className="border-b hover:bg-gray-50">
+                    <tr key={item.item_id} className={`border-b hover:bg-gray-50 ${selectedItems.has(item.item_id) ? 'bg-blue-50' : ''}`}>
+                      <td className="p-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedItems.has(item.item_id)}
+                          onChange={() => toggleSelection(item.item_id)}
+                          className="rounded"
+                        />
+                      </td>
                       <td className="p-3">
                         <Button 
                           variant="ghost" 
@@ -549,6 +739,14 @@ export default function ZohoInventory() {
                         {item.brand ? (
                           <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-xs font-medium">
                             {item.brand}
+                          </span>
+                        ) : '-'}
+                      </td>
+                      <td className="p-3">
+                        {item.manufacturer ? (
+                          <span className="flex items-center gap-1 text-xs text-gray-600">
+                            <Factory className="w-3 h-3" />
+                            {item.manufacturer}
                           </span>
                         ) : '-'}
                       </td>
@@ -590,7 +788,126 @@ export default function ZohoInventory() {
         </CardContent>
       </Card>
 
-      {/* Edit Modal */}
+      {/* Bulk Edit Modal */}
+      {showBulkEdit && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full">
+            <div className="p-6 border-b">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold">Bulk Edit {selectedItems.size} Items</h2>
+                <Button variant="ghost" size="sm" onClick={closeBulkEdit}>
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+              <p className="text-sm text-gray-500 mt-1">Only fill the fields you want to update</p>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {bulkMessage && (
+                <div className={`p-3 rounded ${
+                  bulkMessage.type === 'success' 
+                    ? 'bg-green-100 text-green-700 border border-green-200' 
+                    : 'bg-red-100 text-red-700 border border-red-200'
+                }`}>
+                  {bulkMessage.text}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">Brand</label>
+                <select
+                  className="w-full border rounded-md p-2 text-sm"
+                  value={bulkForm.brand || ''}
+                  onChange={(e) => setBulkForm({...bulkForm, brand: e.target.value})}
+                >
+                  <option value="">-- Don't Change --</option>
+                  {brands.map(brand => (
+                    <option key={brand} value={brand}>{brand}</option>
+                  ))}
+                  <option value="__new__">+ Add New Brand</option>
+                </select>
+                {bulkForm.brand === '__new__' && (
+                  <Input
+                    placeholder="Enter new brand name"
+                    className="mt-2"
+                    onChange={(e) => setBulkForm({...bulkForm, brand: e.target.value})}
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">Manufacturer</label>
+                <select
+                  className="w-full border rounded-md p-2 text-sm"
+                  value={bulkForm.manufacturer || ''}
+                  onChange={(e) => setBulkForm({...bulkForm, manufacturer: e.target.value})}
+                >
+                  <option value="">-- Don't Change --</option>
+                  {manufacturers.map(mfg => (
+                    <option key={mfg} value={mfg}>{mfg}</option>
+                  ))}
+                  <option value="__new__">+ Add New Manufacturer</option>
+                </select>
+                {bulkForm.manufacturer === '__new__' && (
+                  <Input
+                    placeholder="Enter new manufacturer name"
+                    className="mt-2"
+                    onChange={(e) => setBulkForm({...bulkForm, manufacturer: e.target.value})}
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">Sales Account</label>
+                <select
+                  className="w-full border rounded-md p-2 text-sm"
+                  value={bulkForm.account_id || ''}
+                  onChange={(e) => setBulkForm({...bulkForm, account_id: e.target.value})}
+                >
+                  <option value="">-- Don't Change --</option>
+                  {accounts.map(acc => (
+                    <option key={acc.account_id} value={acc.account_id}>
+                      {acc.account_code ? `[${acc.account_code}] ` : ''}{acc.account_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">Purchase Account</label>
+                <select
+                  className="w-full border rounded-md p-2 text-sm"
+                  value={bulkForm.purchase_account_id || ''}
+                  onChange={(e) => setBulkForm({...bulkForm, purchase_account_id: e.target.value})}
+                >
+                  <option value="">-- Don't Change --</option>
+                  {accounts.map(acc => (
+                    <option key={acc.account_id} value={acc.account_id}>
+                      {acc.account_code ? `[${acc.account_code}] ` : ''}{acc.account_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="p-6 border-t bg-gray-50 flex justify-end gap-3">
+              <Button variant="outline" onClick={closeBulkEdit}>
+                Cancel
+              </Button>
+              <Button onClick={saveBulkChanges} disabled={bulkSaving}>
+                {bulkSaving ? (
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
+                Update {selectedItems.size} Items
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Single Edit Modal */}
       {editingItem && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -610,7 +927,6 @@ export default function ZohoInventory() {
               </div>
             ) : (
               <div className="p-6 space-y-6">
-                {/* Save Message */}
                 {saveMessage && (
                   <div className={`p-3 rounded ${
                     saveMessage.type === 'success' 
@@ -656,7 +972,7 @@ export default function ZohoInventory() {
                   <h3 className="font-semibold text-gray-700 mb-3">Pricing</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-600 mb-1">Cost Price (Purchase Rate)</label>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Cost Price</label>
                       <Input
                         type="number"
                         step="0.01"
@@ -665,12 +981,78 @@ export default function ZohoInventory() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-600 mb-1">Selling Price (Rate)</label>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Selling Price</label>
                       <Input
                         type="number"
                         step="0.01"
                         value={editForm.rate || 0}
                         onChange={(e) => setEditForm({...editForm, rate: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Details with Dropdowns */}
+                <div>
+                  <h3 className="font-semibold text-gray-700 mb-3">Details</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Brand</label>
+                      <select
+                        className="w-full border rounded-md p-2 text-sm"
+                        value={editForm.brand || ''}
+                        onChange={(e) => setEditForm({...editForm, brand: e.target.value === '__new__' ? '' : e.target.value, brandNew: e.target.value === '__new__'})}
+                      >
+                        <option value="">-- Select Brand --</option>
+                        {brands.map(brand => (
+                          <option key={brand} value={brand}>{brand}</option>
+                        ))}
+                        <option value="__new__">+ Add New Brand</option>
+                      </select>
+                      {editForm.brandNew && (
+                        <Input
+                          placeholder="Enter new brand name"
+                          className="mt-2"
+                          value={editForm.brand || ''}
+                          onChange={(e) => setEditForm({...editForm, brand: e.target.value})}
+                        />
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Manufacturer</label>
+                      <select
+                        className="w-full border rounded-md p-2 text-sm"
+                        value={editForm.manufacturer || ''}
+                        onChange={(e) => setEditForm({...editForm, manufacturer: e.target.value === '__new__' ? '' : e.target.value, mfgNew: e.target.value === '__new__'})}
+                      >
+                        <option value="">-- Select Manufacturer --</option>
+                        {manufacturers.map(mfg => (
+                          <option key={mfg} value={mfg}>{mfg}</option>
+                        ))}
+                        <option value="__new__">+ Add New Manufacturer</option>
+                      </select>
+                      {editForm.mfgNew && (
+                        <Input
+                          placeholder="Enter new manufacturer name"
+                          className="mt-2"
+                          value={editForm.manufacturer || ''}
+                          onChange={(e) => setEditForm({...editForm, manufacturer: e.target.value})}
+                        />
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Unit</label>
+                      <Input
+                        value={editForm.unit || ''}
+                        onChange={(e) => setEditForm({...editForm, unit: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Reorder Level</label>
+                      <Input
+                        type="number"
+                        value={editForm.reorder_level || 0}
+                        onChange={(e) => setEditForm({...editForm, reorder_level: e.target.value})}
                       />
                     </div>
                   </div>
@@ -715,63 +1097,6 @@ export default function ZohoInventory() {
                     </div>
                   </div>
                 </div>
-
-                {/* Details */}
-                <div>
-                  <h3 className="font-semibold text-gray-700 mb-3">Details</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-600 mb-1">Brand</label>
-                      <Input
-                        value={editForm.brand || ''}
-                        onChange={(e) => setEditForm({...editForm, brand: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-600 mb-1">Manufacturer</label>
-                      <Input
-                        value={editForm.manufacturer || ''}
-                        onChange={(e) => setEditForm({...editForm, manufacturer: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-600 mb-1">Unit</label>
-                      <Input
-                        value={editForm.unit || ''}
-                        onChange={(e) => setEditForm({...editForm, unit: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-600 mb-1">Reorder Level</label>
-                      <Input
-                        type="number"
-                        value={editForm.reorder_level || 0}
-                        onChange={(e) => setEditForm({...editForm, reorder_level: e.target.value})}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Tax Info (Read-only) */}
-                {(editForm.tax_name || editForm.purchase_tax_name) && (
-                  <div>
-                    <h3 className="font-semibold text-gray-700 mb-3">Tax Information</h3>
-                    <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1">Sales Tax</label>
-                        <p className="text-sm font-medium">
-                          {editForm.tax_name ? `${editForm.tax_name} (${editForm.tax_percentage}%)` : '-'}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1">Purchase Tax</label>
-                        <p className="text-sm font-medium">
-                          {editForm.purchase_tax_name ? `${editForm.purchase_tax_name} (${editForm.purchase_tax_percentage}%)` : '-'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 

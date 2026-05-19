@@ -79,6 +79,125 @@ class UploadWithMappingMulti(BaseModel):
     mapping: ColumnMappingMulti
 
 
+# ==================== AUTHENTICATION ====================
+SHARED_PASSWORD = "F0rbt3ch"
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+class ActivityLog(BaseModel):
+    username: str
+    action: str
+    details: str
+    item_id: Optional[str] = None
+    item_name: Optional[str] = None
+    timestamp: Optional[str] = None
+
+
+@api_router.post("/auth/login")
+async def login(request: LoginRequest):
+    """Simple login with shared password"""
+    if request.password != SHARED_PASSWORD:
+        raise HTTPException(status_code=401, detail="Invalid password")
+    
+    # Log the login
+    await db.activity_logs.insert_one({
+        "username": request.username,
+        "action": "LOGIN",
+        "details": f"User logged in",
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {
+        "success": True,
+        "username": request.username,
+        "message": f"Welcome, {request.username}!"
+    }
+
+
+@api_router.post("/auth/logout")
+async def logout(username: str = Body(..., embed=True)):
+    """Log user logout"""
+    await db.activity_logs.insert_one({
+        "username": username,
+        "action": "LOGOUT",
+        "details": f"User logged out",
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    })
+    return {"success": True}
+
+
+@api_router.post("/activity/log")
+async def log_activity(log: ActivityLog):
+    """Log user activity"""
+    await db.activity_logs.insert_one({
+        "username": log.username,
+        "action": log.action,
+        "details": log.details,
+        "item_id": log.item_id,
+        "item_name": log.item_name,
+        "timestamp": log.timestamp or datetime.now(timezone.utc).isoformat()
+    })
+    return {"success": True}
+
+
+@api_router.get("/activity/logs")
+async def get_activity_logs(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+    username: Optional[str] = None,
+    action: Optional[str] = None
+):
+    """Get activity logs with pagination"""
+    try:
+        query = {}
+        if username:
+            query["username"] = {"$regex": username, "$options": "i"}
+        if action:
+            query["action"] = action
+        
+        total = await db.activity_logs.count_documents(query)
+        logs = await db.activity_logs.find(query, {"_id": 0}).sort("timestamp", -1).skip((page - 1) * per_page).limit(per_page).to_list(per_page)
+        
+        return {
+            "logs": logs,
+            "total": total,
+            "page": page,
+            "per_page": per_page,
+            "total_pages": (total + per_page - 1) // per_page
+        }
+    except Exception as e:
+        logger.error(f"Error fetching activity logs: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/activity/stats")
+async def get_activity_stats():
+    """Get activity statistics"""
+    try:
+        total_logs = await db.activity_logs.count_documents({})
+        
+        # Get unique users
+        users = await db.activity_logs.distinct("username")
+        
+        # Get action counts
+        pipeline = [
+            {"$group": {"_id": "$action", "count": {"$sum": 1}}}
+        ]
+        action_counts = await db.activity_logs.aggregate(pipeline).to_list(100)
+        
+        return {
+            "total_logs": total_logs,
+            "unique_users": len(users),
+            "users": users,
+            "action_counts": {item["_id"]: item["count"] for item in action_counts}
+        }
+    except Exception as e:
+        logger.error(f"Error fetching activity stats: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # Use MongoDB for temporary file storage instead of memory
 async def store_temp_file(file_id: str, content: bytes, filename: str):
     """Store file temporarily in MongoDB"""

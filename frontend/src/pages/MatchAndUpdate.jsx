@@ -9,7 +9,7 @@ import {
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
 
-export default function MatchAndUpdate() {
+export default function MatchAndUpdate({ user }) {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
@@ -19,6 +19,26 @@ export default function MatchAndUpdate() {
   const [markup, setMarkup] = useState(45);
   const [updateResults, setUpdateResults] = useState(null);
   const [filterCheaper, setFilterCheaper] = useState(false);
+
+  // Log activity helper
+  const logActivity = async (action, details, itemId = null, itemName = null) => {
+    try {
+      await fetch(`${API_URL}/api/activity/log`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: user || 'Unknown',
+          action,
+          details,
+          item_id: itemId,
+          item_name: itemName,
+          timestamp: new Date().toISOString()
+        })
+      });
+    } catch (e) {
+      console.error('Failed to log activity:', e);
+    }
+  };
 
   const fetchMatches = useCallback(async () => {
     setLoading(true);
@@ -102,6 +122,14 @@ export default function MatchAndUpdate() {
       setUpdateResults(result);
       
       if (result.successful > 0) {
+        // Log the bulk update activity
+        await logActivity(
+          'BULK_UPDATE',
+          `Bulk updated ${result.successful} items with new prices (${markup}% markup)`,
+          null,
+          null
+        );
+        
         // Refresh matches after update
         setTimeout(() => fetchMatches(), 1500);
       }
