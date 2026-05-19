@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { Files, Trash, FileXls } from "@phosphor-icons/react";
+import { Files, Trash, FileXls, MagnifyingGlass, Package, Tag, ArrowDown } from "@phosphor-icons/react";
 import { toast } from "sonner";
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -8,8 +8,13 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const PriceLists = () => {
   const [priceLists, setPriceLists] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [deleteConfirm, setDeleteConfirm] = useState(null); // {id, fileName}
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState(null);
+  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     fetchPriceLists();
@@ -48,6 +53,30 @@ const PriceLists = () => {
     }
   };
 
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) {
+      setSearchResults(null);
+      return;
+    }
+    
+    setSearching(true);
+    try {
+      const response = await axios.get(`${API}/price-lists/search?q=${encodeURIComponent(searchQuery)}`);
+      setSearchResults(response.data);
+    } catch (error) {
+      console.error("Search failed:", error);
+      toast.error("Search failed");
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const clearSearch = () => {
+    setSearchQuery("");
+    setSearchResults(null);
+  };
+
   if (loading) {
     return (
       <div className="p-6">
@@ -67,6 +96,111 @@ const PriceLists = () => {
       </div>
 
       <div className="p-6">
+        {/* Search Section */}
+        <div className="card mb-6">
+          <form onSubmit={handleSearch} className="flex gap-3">
+            <div className="relative flex-1">
+              <MagnifyingGlass size={20} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search products across all price lists..."
+                className="w-full pl-10 pr-4 py-3 border border-zinc-300 focus:border-blue-500 focus:outline-none text-sm"
+                data-testid="search-input"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={searching || !searchQuery.trim()}
+              className="btn-primary px-6"
+              data-testid="search-btn"
+            >
+              {searching ? "Searching..." : "Search"}
+            </button>
+            {searchResults && (
+              <button
+                type="button"
+                onClick={clearSearch}
+                className="btn-secondary px-4"
+              >
+                Clear
+              </button>
+            )}
+          </form>
+        </div>
+
+        {/* Search Results */}
+        {searchResults && (
+          <div className="card mb-6" data-testid="search-results">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold text-lg flex items-center gap-2">
+                <Package size={20} className="text-blue-600" />
+                Search Results for "{searchResults.query}"
+              </h2>
+              <span className="text-sm text-zinc-500">
+                {searchResults.total_results} products found ({searchResults.total_vendor_entries} vendor entries)
+              </span>
+            </div>
+
+            {searchResults.results.length > 0 ? (
+              <div className="space-y-4 max-h-[500px] overflow-y-auto">
+                {searchResults.results.map((product, idx) => (
+                  <div key={idx} className="border border-zinc-200 rounded-lg p-4 hover:border-blue-300 transition-colors">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h3 className="font-mono font-bold text-blue-600">{product.product_code}</h3>
+                        <p className="text-sm text-zinc-600">{product.description}</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="flex items-center gap-1 text-green-600">
+                          <ArrowDown size={14} weight="bold" />
+                          <span className="text-xs font-medium">CHEAPEST</span>
+                        </div>
+                        <p className="font-bold text-lg">R {product.cheapest_price?.toFixed(2)}</p>
+                        <p className="text-xs text-zinc-500">{product.cheapest_vendor}</p>
+                      </div>
+                    </div>
+                    
+                    {/* Vendor price comparison */}
+                    <div className="bg-zinc-50 rounded p-3">
+                      <p className="text-xs font-semibold text-zinc-500 mb-2">
+                        PRICE COMPARISON ({product.vendor_count} vendors)
+                      </p>
+                      <div className="space-y-2">
+                        {product.vendors.map((vendor, vIdx) => (
+                          <div key={vIdx} className="flex items-center justify-between text-sm">
+                            <span className={`flex items-center gap-2 ${vIdx === 0 ? 'text-green-700 font-medium' : 'text-zinc-600'}`}>
+                              {vIdx === 0 && <Tag size={14} weight="fill" className="text-green-600" />}
+                              {vendor.vendor_name}
+                            </span>
+                            <div className="text-right">
+                              <span className={`font-mono ${vIdx === 0 ? 'text-green-700 font-bold' : 'text-zinc-700'}`}>
+                                R {vendor.price?.toFixed(2)}
+                              </span>
+                              {vendor.selling_price && (
+                                <span className="text-xs text-zinc-400 ml-2">
+                                  (Sell: R {vendor.selling_price?.toFixed(2)})
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-zinc-500">
+                <MagnifyingGlass size={40} className="mx-auto mb-2 text-zinc-300" />
+                <p>No products found matching "{searchResults.query}"</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Price Lists Table */}
         {priceLists.length > 0 ? (
           <div className="card p-0 overflow-hidden">
             <table className="w-full data-table" data-testid="price-lists-table">

@@ -1005,6 +1005,66 @@ async def get_price_lists():
     return price_lists
 
 
+@api_router.get("/price-lists/search")
+async def search_all_pricelists(
+    q: str = Query(..., min_length=1, description="Search query"),
+    limit: int = Query(100, ge=1, le=500)
+):
+    """Search products across ALL price lists"""
+    try:
+        search_term = q.strip()
+        
+        # Search by product code or description (case-insensitive)
+        query = {
+            "$or": [
+                {"product_code": {"$regex": search_term, "$options": "i"}},
+                {"description": {"$regex": search_term, "$options": "i"}}
+            ]
+        }
+        
+        products = await db.products.find(query, {"_id": 0}).limit(limit).to_list(limit)
+        
+        # Group by product code to show price comparison
+        grouped = {}
+        for p in products:
+            code = p.get("product_code", "").upper()
+            if code not in grouped:
+                grouped[code] = {
+                    "product_code": p.get("product_code"),
+                    "description": p.get("description"),
+                    "vendors": []
+                }
+            grouped[code]["vendors"].append({
+                "vendor_name": p.get("vendor_name"),
+                "vendor_id": p.get("vendor_id"),
+                "price": p.get("price"),
+                "selling_price": p.get("selling_price"),
+                "price_list_id": p.get("price_list_id")
+            })
+        
+        # Sort vendors by price (cheapest first) within each product
+        results = []
+        for code, data in grouped.items():
+            data["vendors"] = sorted(data["vendors"], key=lambda x: x.get("price", 0))
+            data["cheapest_price"] = data["vendors"][0]["price"] if data["vendors"] else 0
+            data["cheapest_vendor"] = data["vendors"][0]["vendor_name"] if data["vendors"] else ""
+            data["vendor_count"] = len(data["vendors"])
+            results.append(data)
+        
+        # Sort results by product code
+        results = sorted(results, key=lambda x: x.get("product_code", ""))
+        
+        return {
+            "query": search_term,
+            "total_results": len(results),
+            "total_vendor_entries": len(products),
+            "results": results
+        }
+    except Exception as e:
+        logger.error(f"Search error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @api_router.delete("/price-lists/{price_list_id}")
 async def delete_price_list(price_list_id: str):
     result = await db.price_lists.delete_one({"id": price_list_id})
