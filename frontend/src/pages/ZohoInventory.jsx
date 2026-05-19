@@ -42,6 +42,7 @@ export default function ZohoInventory({ user }) {
   
   // Quick transaction check state for table rows
   const [itemTransactions, setItemTransactions] = useState({}); // {item_id: {loading, data}}
+  const [showTransPopup, setShowTransPopup] = useState(null); // item_id to show popup for
 
   // Log activity helper
   const logActivity = async (action, details, itemId = null, itemName = null) => {
@@ -429,10 +430,13 @@ export default function ZohoInventory({ user }) {
     } catch (err) {
       setItemTransactions(prev => ({
         ...prev,
-        [itemId]: { loading: false, data: { error: true } }
+        [itemId]: { loading: false, data: { error: true, has_transactions: false } }
       }));
     }
   };
+
+  // Don't auto-load - it overwhelms Zoho API. Only load on click.
+  // We show stock as a proxy indicator instead
 
   const saveItem = async () => {
     setSaving(true);
@@ -889,32 +893,88 @@ export default function ZohoInventory({ user }) {
                           {item.stock_on_hand}
                         </span>
                       </td>
-                      <td className="p-3 text-center bg-purple-50/30">
+                      <td className="p-3 text-center bg-purple-50/30 relative">
                         {itemTransactions[item.item_id]?.loading ? (
-                          <span className="text-xs text-gray-400">...</span>
+                          <span className="inline-block w-4 h-4 border-2 border-purple-300 border-t-purple-600 rounded-full animate-spin"></span>
                         ) : itemTransactions[item.item_id]?.data ? (
-                          <div className="flex items-center justify-center gap-1">
-                            {itemTransactions[item.item_id].data.has_transactions ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">
-                                <CheckCircle className="w-3 h-3" />
-                                {(itemTransactions[item.item_id].data.total_sales_orders || 0) + (itemTransactions[item.item_id].data.total_purchase_orders || 0)}
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-medium">
-                                <AlertCircle className="w-3 h-3" />
-                                0
-                              </span>
+                          <>
+                            <button
+                              onClick={() => setShowTransPopup(showTransPopup === item.item_id ? null : item.item_id)}
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity ${
+                                itemTransactions[item.item_id].data.has_transactions 
+                                  ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                                  : 'bg-gray-100 text-gray-500'
+                              }`}
+                            >
+                              {itemTransactions[item.item_id].data.has_transactions ? (
+                                <>
+                                  <CheckCircle className="w-3 h-3" />
+                                  {(itemTransactions[item.item_id].data.total_sales_orders || 0) + (itemTransactions[item.item_id].data.total_purchase_orders || 0)}
+                                </>
+                              ) : (
+                                <>
+                                  <span className="w-3 h-3 text-center">-</span>
+                                  0
+                                </>
+                              )}
+                            </button>
+                            
+                            {/* Transaction Details Popup */}
+                            {showTransPopup === item.item_id && itemTransactions[item.item_id].data.has_transactions && (
+                              <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-xl p-3 min-w-[250px] text-left">
+                                <div className="flex justify-between items-center mb-2 pb-2 border-b">
+                                  <span className="font-semibold text-gray-700 text-sm">Transaction History</span>
+                                  <button onClick={() => setShowTransPopup(null)} className="text-gray-400 hover:text-gray-600">
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 mb-2">
+                                  <div className="text-center p-2 bg-blue-50 rounded">
+                                    <p className="text-lg font-bold text-blue-600">{itemTransactions[item.item_id].data.total_sales_orders || 0}</p>
+                                    <p className="text-xs text-gray-500">Sales Orders</p>
+                                  </div>
+                                  <div className="text-center p-2 bg-green-50 rounded">
+                                    <p className="text-lg font-bold text-green-600">{itemTransactions[item.item_id].data.total_purchase_orders || 0}</p>
+                                    <p className="text-xs text-gray-500">Purchase Orders</p>
+                                  </div>
+                                </div>
+                                {itemTransactions[item.item_id].data.sales_orders?.slice(0, 3).map((so, idx) => (
+                                  <div key={idx} className="text-xs py-1 border-t border-gray-100">
+                                    <span className="text-blue-600 font-mono">{so.order_number}</span>
+                                    <span className="text-gray-400 ml-1">{so.customer_name}</span>
+                                  </div>
+                                ))}
+                                {itemTransactions[item.item_id].data.purchase_orders?.slice(0, 3).map((po, idx) => (
+                                  <div key={idx} className="text-xs py-1 border-t border-gray-100">
+                                    <span className="text-green-600 font-mono">{po.order_number}</span>
+                                    <span className="text-gray-400 ml-1">{po.vendor_name}</span>
+                                  </div>
+                                ))}
+                              </div>
                             )}
-                          </div>
+                          </>
                         ) : (
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
+                          <button
                             onClick={() => checkRowTransactions(item.item_id)}
-                            className="h-6 px-2 text-xs text-purple-600 hover:text-purple-800 hover:bg-purple-100"
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium cursor-pointer transition-all ${
+                              item.stock_on_hand > 0 
+                                ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' 
+                                : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
+                            }`}
+                            title="Click to check transactions"
                           >
-                            Check
-                          </Button>
+                            {item.stock_on_hand > 0 ? (
+                              <>
+                                <Package className="w-3 h-3" />
+                                ?
+                              </>
+                            ) : (
+                              <>
+                                <span className="w-3 h-3 text-center">○</span>
+                                ?
+                              </>
+                            )}
+                          </button>
                         )}
                       </td>
                     </tr>
