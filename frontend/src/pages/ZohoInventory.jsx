@@ -4,7 +4,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { 
   RefreshCw, Search, Package, Filter, X, 
-  ShoppingCart, Tag, Boxes, TrendingUp, CheckCircle, Factory, Edit, Save, BookOpen, CheckSquare, AlertCircle, CheckCircle2, XCircle
+  ShoppingCart, Tag, Boxes, TrendingUp, CheckCircle, Factory, Edit, Save, BookOpen, CheckSquare, AlertCircle, CheckCircle2, XCircle, History, TrendingDown
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -33,6 +33,8 @@ export default function ZohoInventory({ user }) {
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState(null);
+  const [priceHistory, setPriceHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   // Log activity helper
   const logActivity = async (action, details, itemId = null, itemName = null) => {
@@ -321,10 +323,16 @@ export default function ZohoInventory({ user }) {
     setEditingItem(item);
     setLoadingDetails(true);
     setSaveMessage(null);
+    setPriceHistory([]);
     
     try {
-      const res = await fetch(`${API_URL}/api/zoho/items/${item.item_id}`);
-      const data = await res.json();
+      // Fetch item details and price history in parallel
+      const [detailsRes, historyRes] = await Promise.all([
+        fetch(`${API_URL}/api/zoho/items/${item.item_id}`),
+        fetch(`${API_URL}/api/zoho/items/${item.item_id}/price-history?limit=10`)
+      ]);
+      
+      const data = await detailsRes.json();
       setEditForm({
         name: data.name || '',
         sku: data.sku || '',
@@ -345,6 +353,14 @@ export default function ZohoInventory({ user }) {
         purchase_tax_name: data.purchase_tax_name || '',
         purchase_tax_percentage: data.purchase_tax_percentage || 0,
       });
+      
+      // Load price history
+      try {
+        const historyData = await historyRes.json();
+        setPriceHistory(historyData.history || []);
+      } catch (e) {
+        console.log('No price history available');
+      }
     } catch (err) {
       console.error('Failed to fetch item details:', err);
       setEditForm({
@@ -371,6 +387,7 @@ export default function ZohoInventory({ user }) {
     setEditingItem(null);
     setEditForm({});
     setSaveMessage(null);
+    setPriceHistory([]);
   };
 
   const saveItem = async () => {
@@ -1179,6 +1196,55 @@ export default function ZohoInventory({ user }) {
                     </div>
                   </div>
                 </div>
+
+                {/* Price History */}
+                {priceHistory.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                      <History className="w-4 h-4" />
+                      Price History
+                    </h3>
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="text-left p-2 font-medium text-gray-600">Date</th>
+                            <th className="text-right p-2 font-medium text-gray-600">Old Cost</th>
+                            <th className="text-right p-2 font-medium text-gray-600">New Cost</th>
+                            <th className="text-right p-2 font-medium text-gray-600">Change</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {priceHistory.slice(0, 5).map((record, idx) => (
+                            <tr key={idx} className="border-t">
+                              <td className="p-2 text-gray-600">
+                                {new Date(record.timestamp).toLocaleDateString()}
+                              </td>
+                              <td className="p-2 text-right text-gray-600">
+                                R {record.old_cost_price?.toFixed(2)}
+                              </td>
+                              <td className="p-2 text-right text-gray-600">
+                                R {record.new_cost_price?.toFixed(2)}
+                              </td>
+                              <td className={`p-2 text-right font-medium ${
+                                record.cost_change > 0 ? 'text-red-500' : record.cost_change < 0 ? 'text-green-600' : 'text-gray-500'
+                              }`}>
+                                {record.cost_change > 0 && <TrendingUp className="w-3 h-3 inline mr-1" />}
+                                {record.cost_change < 0 && <TrendingDown className="w-3 h-3 inline mr-1" />}
+                                {record.cost_change > 0 ? '+' : ''}{record.cost_change?.toFixed(2)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {priceHistory.length > 5 && (
+                        <div className="p-2 text-center text-xs text-gray-500 bg-gray-50 border-t">
+                          +{priceHistory.length - 5} more records
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

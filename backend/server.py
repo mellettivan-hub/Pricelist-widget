@@ -589,6 +589,23 @@ async def upload_with_mapping(data: UploadWithMapping):
             })
         await db.price_history.insert_many(history_records)
         
+        # Log the upload activity
+        sheets_summary = ", ".join([f"{s['sheet']} ({s['products']})" for s in sheets_processed[:5]])
+        if len(sheets_processed) > 5:
+            sheets_summary += f" +{len(sheets_processed) - 5} more"
+        
+        await db.activity_logs.insert_one({
+            "username": data.vendor_name,  # Use vendor name as actor for uploads
+            "action": "PRICELIST_UPLOAD",
+            "details": f"Uploaded pricelist: {len(products)} products from {len(sheets_processed)} sheets. Sheets: {sheets_summary}",
+            "item_id": price_list_id,
+            "item_name": f"upload_{price_list_id[:8]}.xlsx",
+            "vendor_name": data.vendor_name,
+            "product_count": len(products),
+            "sheets_count": len(sheets_processed),
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+        
         # Clean up temp file
         await delete_temp_file(file_id)
         
@@ -781,6 +798,24 @@ async def upload_with_mapping_multi(data: UploadWithMappingMulti):
         } for p in products]
         await db.price_history.insert_many(history_records)
         
+        # Log the upload activity
+        sheets_summary = ", ".join([f"{s['sheet']} ({s['products']})" for s in sheets_processed[:5]])
+        if len(sheets_processed) > 5:
+            sheets_summary += f" +{len(sheets_processed) - 5} more"
+        
+        await db.activity_logs.insert_one({
+            "username": data.vendor_name,
+            "action": "PRICELIST_UPLOAD",
+            "details": f"Uploaded pricelist: {len(products)} products from {len(sheets_processed)} sheets ({data.markup_percent}% markup). Sheets: {sheets_summary}",
+            "item_id": price_list_id,
+            "item_name": f"upload_{price_list_id[:8]}.xlsx",
+            "vendor_name": data.vendor_name,
+            "product_count": len(products),
+            "sheets_count": len(sheets_processed),
+            "markup_percent": data.markup_percent,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
+        
         # Clean up temp file from MongoDB
         await delete_temp_file(file_id)
         
@@ -917,6 +952,23 @@ async def upload_auto(
             'recorded_at': datetime.now(timezone.utc).isoformat()
         } for p in products]
         await db.price_history.insert_many(history_records)
+        
+        # Log the upload activity
+        sheets_summary = ", ".join([f"{s['sheet']} ({s['products']})" for s in sheets_processed[:5]])
+        if len(sheets_processed) > 5:
+            sheets_summary += f" +{len(sheets_processed) - 5} more"
+        
+        await db.activity_logs.insert_one({
+            "username": vendor_name,
+            "action": "PRICELIST_UPLOAD",
+            "details": f"Auto-uploaded: {file.filename} - {len(products)} products from {len(sheets_processed)} sheets. Sheets: {sheets_summary}",
+            "item_id": price_list_id,
+            "item_name": file.filename,
+            "vendor_name": vendor_name,
+            "product_count": len(products),
+            "sheets_count": len(sheets_processed),
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        })
         
         return {
             "message": "Price list uploaded successfully",
@@ -1546,9 +1598,26 @@ async def get_zoho_accounts():
 
 @api_router.put("/zoho/items/{item_id}")
 async def update_zoho_item(item_id: str, update_data: ItemUpdate):
-    """Update item fields in Zoho Inventory with verification"""
+    """Update item fields in Zoho Inventory with verification and price history tracking"""
     try:
         zoho = ZohoInventoryClient(db)
+        
+        # Fetch current item data BEFORE updating (for price history)
+        current_item_result = await zoho.get_item(item_id)
+        current_item = current_item_result.get("item", {})
+        
+        def safe_float(val, default=0.0):
+            if val is None or val == '':
+                return default
+            try:
+                return float(val)
+            except (ValueError, TypeError):
+                return default
+        
+        old_cost = safe_float(current_item.get("purchase_rate"))
+        old_selling = safe_float(current_item.get("rate"))
+        item_name = current_item.get("name", "")
+        item_sku = current_item.get("sku", "")
         
         # Build update dict with only provided fields
         data = {}
@@ -1581,6 +1650,29 @@ async def update_zoho_item(item_id: str, update_data: ItemUpdate):
         # Perform the update
         result = await zoho.update_item(item_id, data)
         
+        # Save price history if prices changed
+        new_cost = safe_float(data.get("purchase_rate")) if "purchase_rate" in data else old_cost
+        new_selling = safe_float(data.get("rate")) if "rate" in data else old_selling
+        
+        price_changed = ("purchase_rate" in data and abs(new_cost - old_cost) > 0.01) or \
+                       ("rate" in data and abs(new_selling - old_selling) > 0.01)
+        
+        if price_changed:
+            await db.zoho_price_history.insert_one({
+                "id": str(uuid.uuid4()),
+                "item_id": item_id,
+                "item_name": item_name,
+                "item_sku": item_sku,
+                "old_cost_price": old_cost,
+                "new_cost_price": new_cost,
+                "old_selling_price": old_selling,
+                "new_selling_price": new_selling,
+                "cost_change": round(new_cost - old_cost, 2),
+                "selling_change": round(new_selling - old_selling, 2),
+                "source": "manual_update",
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            })
+        
         # Verify the update by fetching the item back from Zoho
         import asyncio
         await asyncio.sleep(0.5)  # Small delay to ensure Zoho has processed the update
@@ -1591,14 +1683,6 @@ async def update_zoho_item(item_id: str, update_data: ItemUpdate):
         # Check if the critical fields were updated correctly
         verification_checks = []
         verified_data = {}
-        
-        def safe_float(val, default=0.0):
-            if val is None or val == '':
-                return default
-            try:
-                return float(val)
-            except (ValueError, TypeError):
-                return default
         
         # Check each field that was supposed to be updated
         if "rate" in data:
@@ -1704,6 +1788,54 @@ class SinglePriceUpdate(BaseModel):
     item_id: str
     purchase_rate: float
     rate: float
+
+
+@api_router.get("/zoho/items/{item_id}/price-history")
+async def get_zoho_item_price_history(item_id: str, limit: int = Query(20, ge=1, le=100)):
+    """Get price history for a specific Zoho item"""
+    try:
+        history = await db.zoho_price_history.find(
+            {"item_id": item_id},
+            {"_id": 0}
+        ).sort("timestamp", -1).limit(limit).to_list(limit)
+        
+        return {
+            "item_id": item_id,
+            "history": history,
+            "count": len(history)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching price history for {item_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/zoho/price-history/recent")
+async def get_recent_price_changes(limit: int = Query(50, ge=1, le=200)):
+    """Get recent price changes across all items"""
+    try:
+        history = await db.zoho_price_history.find(
+            {},
+            {"_id": 0}
+        ).sort("timestamp", -1).limit(limit).to_list(limit)
+        
+        # Group by date for summary
+        summary = {}
+        for record in history:
+            date = record.get("timestamp", "")[:10]
+            if date not in summary:
+                summary[date] = {"count": 0, "total_cost_change": 0, "total_selling_change": 0}
+            summary[date]["count"] += 1
+            summary[date]["total_cost_change"] += record.get("cost_change", 0)
+            summary[date]["total_selling_change"] += record.get("selling_change", 0)
+        
+        return {
+            "history": history,
+            "count": len(history),
+            "daily_summary": summary
+        }
+    except Exception as e:
+        logger.error(f"Error fetching recent price changes: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @api_router.post("/zoho/items/bulk-update")

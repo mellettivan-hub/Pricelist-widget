@@ -63,6 +63,7 @@ export default function ActivityLogs() {
       case 'UPDATE_ITEM': return <Edit className="w-4 h-4 text-blue-500" />;
       case 'BULK_UPDATE': return <ArrowRightLeft className="w-4 h-4 text-purple-500" />;
       case 'UPLOAD': return <Upload className="w-4 h-4 text-amber-500" />;
+      case 'PRICELIST_UPLOAD': return <Upload className="w-4 h-4 text-orange-500" />;
       default: return <FileText className="w-4 h-4 text-gray-400" />;
     }
   };
@@ -74,6 +75,7 @@ export default function ActivityLogs() {
       'UPDATE_ITEM': 'bg-blue-100 text-blue-700',
       'BULK_UPDATE': 'bg-purple-100 text-purple-700',
       'UPLOAD': 'bg-amber-100 text-amber-700',
+      'PRICELIST_UPLOAD': 'bg-orange-100 text-orange-700',
       'PRICE_UPDATE': 'bg-indigo-100 text-indigo-700',
     };
     return colors[action] || 'bg-gray-100 text-gray-700';
@@ -186,6 +188,7 @@ export default function ActivityLogs() {
               <option value="LOGOUT">Logout</option>
               <option value="UPDATE_ITEM">Item Update</option>
               <option value="BULK_UPDATE">Bulk Update</option>
+              <option value="PRICELIST_UPLOAD">Pricelist Upload</option>
               <option value="UPLOAD">Upload</option>
               <option value="PRICE_UPDATE">Price Update</option>
             </select>
