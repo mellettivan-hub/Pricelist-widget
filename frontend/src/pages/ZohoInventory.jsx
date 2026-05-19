@@ -39,6 +39,9 @@ export default function ZohoInventory({ user }) {
   // Transaction history state
   const [transactions, setTransactions] = useState(null);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
+  
+  // Quick transaction check state for table rows
+  const [itemTransactions, setItemTransactions] = useState({}); // {item_id: {loading, data}}
 
   // Log activity helper
   const logActivity = async (action, details, itemId = null, itemName = null) => {
@@ -406,6 +409,28 @@ export default function ZohoInventory({ user }) {
       setTransactions({ error: 'Failed to load transactions' });
     } finally {
       setLoadingTransactions(false);
+    }
+  };
+
+  const checkRowTransactions = async (itemId) => {
+    // Set loading state for this item
+    setItemTransactions(prev => ({
+      ...prev,
+      [itemId]: { loading: true, data: null }
+    }));
+    
+    try {
+      const res = await fetch(`${API_URL}/api/zoho/items/${itemId}/transactions`);
+      const data = await res.json();
+      setItemTransactions(prev => ({
+        ...prev,
+        [itemId]: { loading: false, data }
+      }));
+    } catch (err) {
+      setItemTransactions(prev => ({
+        ...prev,
+        [itemId]: { loading: false, data: { error: true } }
+      }));
     }
   };
 
@@ -780,6 +805,7 @@ export default function ZohoInventory({ user }) {
                     <th className="text-right p-3 font-semibold bg-blue-50">Cost Price</th>
                     <th className="text-right p-3 font-semibold bg-green-50">Selling Price</th>
                     <th className="text-right p-3 font-semibold">Stock</th>
+                    <th className="text-center p-3 font-semibold bg-purple-50">Trans.</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -862,6 +888,34 @@ export default function ZohoInventory({ user }) {
                         }`}>
                           {item.stock_on_hand}
                         </span>
+                      </td>
+                      <td className="p-3 text-center bg-purple-50/30">
+                        {itemTransactions[item.item_id]?.loading ? (
+                          <span className="text-xs text-gray-400">...</span>
+                        ) : itemTransactions[item.item_id]?.data ? (
+                          <div className="flex items-center justify-center gap-1">
+                            {itemTransactions[item.item_id].data.has_transactions ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">
+                                <CheckCircle className="w-3 h-3" />
+                                {(itemTransactions[item.item_id].data.total_sales_orders || 0) + (itemTransactions[item.item_id].data.total_purchase_orders || 0)}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-medium">
+                                <AlertCircle className="w-3 h-3" />
+                                0
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => checkRowTransactions(item.item_id)}
+                            className="h-6 px-2 text-xs text-purple-600 hover:text-purple-800 hover:bg-purple-100"
+                          >
+                            Check
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   ))}
