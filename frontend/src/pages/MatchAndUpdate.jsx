@@ -279,7 +279,7 @@ export default function MatchAndUpdate() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-lg">
-              Price Comparisons ({filteredMatches.length} shown)
+              Matched Products ({filteredMatches.length} shown)
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -311,9 +311,22 @@ export default function MatchAndUpdate() {
                       <th className="text-left p-3 font-semibold">Zoho Item</th>
                       <th className="text-left p-3 font-semibold">Matched Vendor</th>
                       <th className="text-left p-3 font-semibold">Match</th>
-                      <th className="text-right p-3 font-semibold">Current Cost</th>
-                      <th className="text-right p-3 font-semibold">New Cost</th>
-                      <th className="text-right p-3 font-semibold">New Selling</th>
+                      <th className="text-right p-3 font-semibold bg-blue-50">
+                        <div>Current Cost</div>
+                        <div className="text-xs font-normal text-gray-500">(Zoho)</div>
+                      </th>
+                      <th className="text-right p-3 font-semibold bg-blue-50">
+                        <div>Current Selling</div>
+                        <div className="text-xs font-normal text-gray-500">(Zoho)</div>
+                      </th>
+                      <th className="text-right p-3 font-semibold bg-green-50">
+                        <div>Cheapest Cost</div>
+                        <div className="text-xs font-normal text-gray-500">(Vendor)</div>
+                      </th>
+                      <th className="text-right p-3 font-semibold bg-green-50">
+                        <div>New Selling</div>
+                        <div className="text-xs font-normal text-gray-500">(+{markup}%)</div>
+                      </th>
                       <th className="text-right p-3 font-semibold">Savings</th>
                     </tr>
                   </thead>
@@ -350,13 +363,16 @@ export default function MatchAndUpdate() {
                             {match.match_type} ({match.match_score}%)
                           </span>
                         </td>
-                        <td className="p-3 text-right font-medium">
+                        <td className="p-3 text-right font-medium bg-blue-50/50">
                           {formatCurrency(match.zoho_current_cost)}
                         </td>
-                        <td className="p-3 text-right font-medium text-blue-600">
+                        <td className="p-3 text-right font-medium bg-blue-50/50">
+                          {formatCurrency(match.zoho_current_selling)}
+                        </td>
+                        <td className="p-3 text-right font-medium text-green-700 bg-green-50/50">
                           {formatCurrency(match.suggested_cost)}
                         </td>
-                        <td className="p-3 text-right font-medium text-green-600">
+                        <td className="p-3 text-right font-medium text-green-700 bg-green-50/50">
                           {formatCurrency(match.suggested_selling)}
                         </td>
                         <td className="p-3 text-right">
