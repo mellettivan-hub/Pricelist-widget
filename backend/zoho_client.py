@@ -181,6 +181,10 @@ class ZohoInventoryClient:
         }
         return await self._make_request("PUT", f"/items/{item_id}", json_data=data)
     
+    async def update_item(self, item_id: str, data: Dict) -> Dict:
+        """Update item with any fields"""
+        return await self._make_request("PUT", f"/items/{item_id}", json_data=data)
+    
     async def get_item(self, item_id: str) -> Dict:
-        """Get a single item by ID"""
+        """Get a single item by ID with full details"""
         return await self._make_request("GET", f"/items/{item_id}")

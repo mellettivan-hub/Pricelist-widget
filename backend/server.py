@@ -1327,6 +1327,111 @@ async def update_zoho_item_price(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@api_router.get("/zoho/items/{item_id}")
+async def get_zoho_item_details(item_id: str):
+    """Get detailed information about a single item"""
+    try:
+        zoho = ZohoInventoryClient(db)
+        result = await zoho.get_item(item_id)
+        item = result.get("item", {})
+        
+        def safe_float(val, default=0.0):
+            if val is None or val == '':
+                return default
+            try:
+                return float(val)
+            except (ValueError, TypeError):
+                return default
+        
+        return {
+            "item_id": str(item.get("item_id", "")),
+            "name": item.get("name", ""),
+            "sku": item.get("sku", ""),
+            "description": item.get("description", ""),
+            "rate": safe_float(item.get("rate")),
+            "purchase_rate": safe_float(item.get("purchase_rate")),
+            "status": item.get("status", ""),
+            "brand": item.get("brand", ""),
+            "manufacturer": item.get("manufacturer", ""),
+            "stock_on_hand": safe_float(item.get("stock_on_hand")),
+            "product_type": item.get("product_type", "goods"),
+            "is_sales_item": item.get("is_sales_item", True),
+            "is_purchase_item": item.get("is_purchase_item", True),
+            "unit": item.get("unit", ""),
+            "category_name": item.get("category_name", ""),
+            "reorder_level": safe_float(item.get("reorder_level")),
+            "item_type": item.get("item_type", "inventory"),
+            # Account information
+            "purchase_account_id": item.get("purchase_account_id", ""),
+            "purchase_account_name": item.get("purchase_account_name", ""),
+            "account_id": item.get("account_id", ""),
+            "account_name": item.get("account_name", ""),
+            "inventory_account_id": item.get("inventory_account_id", ""),
+            "inventory_account_name": item.get("inventory_account_name", ""),
+            # Tax information
+            "tax_id": item.get("tax_id", ""),
+            "tax_name": item.get("tax_name", ""),
+            "tax_percentage": safe_float(item.get("tax_percentage")),
+            "purchase_tax_id": item.get("purchase_tax_id", ""),
+            "purchase_tax_name": item.get("purchase_tax_name", ""),
+            "purchase_tax_percentage": safe_float(item.get("purchase_tax_percentage")),
+        }
+    except Exception as e:
+        logger.error(f"Error fetching Zoho item {item_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class ItemUpdate(BaseModel):
+    name: Optional[str] = None
+    sku: Optional[str] = None
+    description: Optional[str] = None
+    rate: Optional[float] = None
+    purchase_rate: Optional[float] = None
+    brand: Optional[str] = None
+    manufacturer: Optional[str] = None
+    unit: Optional[str] = None
+    reorder_level: Optional[float] = None
+
+
+@api_router.put("/zoho/items/{item_id}")
+async def update_zoho_item(item_id: str, update_data: ItemUpdate):
+    """Update item fields in Zoho Inventory"""
+    try:
+        zoho = ZohoInventoryClient(db)
+        
+        # Build update dict with only provided fields
+        data = {}
+        if update_data.name is not None:
+            data["name"] = update_data.name
+        if update_data.sku is not None:
+            data["sku"] = update_data.sku
+        if update_data.description is not None:
+            data["description"] = update_data.description
+        if update_data.rate is not None:
+            data["rate"] = update_data.rate
+        if update_data.purchase_rate is not None:
+            data["purchase_rate"] = update_data.purchase_rate
+        if update_data.brand is not None:
+            data["brand"] = update_data.brand
+        if update_data.manufacturer is not None:
+            data["manufacturer"] = update_data.manufacturer
+        if update_data.unit is not None:
+            data["unit"] = update_data.unit
+        if update_data.reorder_level is not None:
+            data["reorder_level"] = update_data.reorder_level
+        
+        if not data:
+            raise HTTPException(status_code=400, detail="No fields to update")
+        
+        result = await zoho.update_item(item_id, data)
+        return {"success": True, "result": result}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating Zoho item {item_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 class SinglePriceUpdate(BaseModel):
     item_id: str
     purchase_rate: float

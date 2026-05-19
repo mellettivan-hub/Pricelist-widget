@@ -4,7 +4,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { 
   RefreshCw, Search, Package, Filter, X, 
-  ShoppingCart, Tag, Boxes, TrendingUp, CheckCircle, Factory
+  ShoppingCart, Tag, Boxes, TrendingUp, CheckCircle, Factory, Edit, Save
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -18,6 +18,13 @@ export default function ZohoInventory() {
   const [brandFilter, setBrandFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
+  
+  // Edit modal state
+  const [editingItem, setEditingItem] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState(null);
 
   const fetchAllItems = async () => {
     setLoading(true);
@@ -50,18 +57,13 @@ export default function ZohoInventory() {
     return { totalProducts, totalValue, inStock, outOfStock, goods, services, sellable, purchasable };
   }, [allItems]);
 
-  // Get unique brands and manufacturers for filters
-  const { brands, manufacturers } = useMemo(() => {
+  // Get unique brands
+  const brands = useMemo(() => {
     const brandSet = new Set();
-    const mfgSet = new Set();
     allItems.forEach(item => {
       if (item.brand) brandSet.add(item.brand);
-      if (item.manufacturer) mfgSet.add(item.manufacturer);
     });
-    return {
-      brands: Array.from(brandSet).sort(),
-      manufacturers: Array.from(mfgSet).sort()
-    };
+    return Array.from(brandSet).sort();
   }, [allItems]);
 
   // Fuzzy match function
@@ -135,6 +137,100 @@ export default function ZohoInventory() {
   };
 
   const hasActiveFilters = searchTerm || statusFilter !== 'all' || brandFilter !== 'all' || typeFilter !== 'all';
+
+  // Edit functions
+  const openEditModal = async (item) => {
+    setEditingItem(item);
+    setLoadingDetails(true);
+    setSaveMessage(null);
+    
+    try {
+      const res = await fetch(`${API_URL}/api/zoho/items/${item.item_id}`);
+      const data = await res.json();
+      setEditForm({
+        name: data.name || '',
+        sku: data.sku || '',
+        description: data.description || '',
+        rate: data.rate || 0,
+        purchase_rate: data.purchase_rate || 0,
+        brand: data.brand || '',
+        manufacturer: data.manufacturer || '',
+        unit: data.unit || '',
+        reorder_level: data.reorder_level || 0,
+        // Account info (read-only display)
+        account_name: data.account_name || '',
+        purchase_account_name: data.purchase_account_name || '',
+        inventory_account_name: data.inventory_account_name || '',
+        tax_name: data.tax_name || '',
+        tax_percentage: data.tax_percentage || 0,
+        purchase_tax_name: data.purchase_tax_name || '',
+        purchase_tax_percentage: data.purchase_tax_percentage || 0,
+      });
+    } catch (err) {
+      console.error('Failed to fetch item details:', err);
+      setEditForm({
+        name: item.name || '',
+        sku: item.sku || '',
+        description: item.description || '',
+        rate: item.rate || 0,
+        purchase_rate: item.purchase_rate || 0,
+        brand: item.brand || '',
+        manufacturer: item.manufacturer || '',
+        unit: item.unit || '',
+        reorder_level: item.reorder_level || 0,
+      });
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  const closeEditModal = () => {
+    setEditingItem(null);
+    setEditForm({});
+    setSaveMessage(null);
+  };
+
+  const saveItem = async () => {
+    setSaving(true);
+    setSaveMessage(null);
+    
+    try {
+      const res = await fetch(`${API_URL}/api/zoho/items/${editingItem.item_id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editForm.name,
+          sku: editForm.sku,
+          description: editForm.description,
+          rate: parseFloat(editForm.rate) || 0,
+          purchase_rate: parseFloat(editForm.purchase_rate) || 0,
+          brand: editForm.brand,
+          manufacturer: editForm.manufacturer,
+          unit: editForm.unit,
+          reorder_level: parseFloat(editForm.reorder_level) || 0,
+        })
+      });
+      
+      const result = await res.json();
+      
+      if (result.success) {
+        setSaveMessage({ type: 'success', text: 'Item updated successfully!' });
+        // Update local state
+        setAllItems(prev => prev.map(item => 
+          item.item_id === editingItem.item_id 
+            ? { ...item, ...editForm, rate: parseFloat(editForm.rate), purchase_rate: parseFloat(editForm.purchase_rate) }
+            : item
+        ));
+        setTimeout(() => closeEditModal(), 1500);
+      } else {
+        setSaveMessage({ type: 'error', text: result.detail || 'Failed to update item' });
+      }
+    } catch (err) {
+      setSaveMessage({ type: 'error', text: err.message || 'Failed to update item' });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -318,12 +414,6 @@ export default function ZohoInventory() {
               </div>
             </div>
           )}
-
-          {fuzzySearch && (
-            <p className="text-xs text-blue-600 bg-blue-50 px-3 py-1.5 rounded">
-              🔍 Fuzzy search enabled - finds partial matches and similar terms
-            </p>
-          )}
         </CardContent>
       </Card>
 
@@ -346,23 +436,18 @@ export default function ZohoInventory() {
             <div className="text-center py-8 text-gray-500">
               <Package className="w-12 h-12 mx-auto mb-2 text-gray-300" />
               <p>No items found</p>
-              {hasActiveFilters && (
-                <Button variant="link" onClick={clearFilters} className="mt-2">
-                  Clear filters
-                </Button>
-              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-gray-50">
+                    <th className="text-left p-3 font-semibold w-10">Edit</th>
                     <th className="text-left p-3 font-semibold">SKU</th>
                     <th className="text-left p-3 font-semibold">Product Name</th>
                     <th className="text-left p-3 font-semibold">Type</th>
                     <th className="text-left p-3 font-semibold">Brand</th>
                     <th className="text-left p-3 font-semibold">Manufacturer</th>
-                    <th className="text-center p-3 font-semibold">Status</th>
                     <th className="text-center p-3 font-semibold">Sellable</th>
                     <th className="text-center p-3 font-semibold">Purchasable</th>
                     <th className="text-right p-3 font-semibold bg-blue-50">Cost Price</th>
@@ -373,6 +458,16 @@ export default function ZohoInventory() {
                 <tbody>
                   {filteredItems.slice(0, 100).map((item) => (
                     <tr key={item.item_id} className="border-b hover:bg-gray-50">
+                      <td className="p-3">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => openEditModal(item)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      </td>
                       <td className="p-3">
                         <code className="bg-gray-100 px-2 py-0.5 rounded text-xs font-mono">
                           {item.sku || '-'}
@@ -400,9 +495,7 @@ export default function ZohoInventory() {
                           <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-xs font-medium">
                             {item.brand}
                           </span>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
+                        ) : '-'}
                       </td>
                       <td className="p-3">
                         {item.manufacturer ? (
@@ -410,18 +503,7 @@ export default function ZohoInventory() {
                             <Factory className="w-3 h-3" />
                             {item.manufacturer}
                           </span>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </td>
-                      <td className="p-3 text-center">
-                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                          item.status === 'active' 
-                            ? 'bg-green-100 text-green-700' 
-                            : 'bg-gray-100 text-gray-600'
-                        }`}>
-                          {item.status}
-                        </span>
+                        ) : '-'}
                       </td>
                       <td className="p-3 text-center">
                         {item.is_sales_item ? (
@@ -445,9 +527,7 @@ export default function ZohoInventory() {
                       </td>
                       <td className="p-3 text-right">
                         <span className={`font-medium ${
-                          item.stock_on_hand > 0 
-                            ? 'text-green-600' 
-                            : 'text-red-500'
+                          item.stock_on_hand > 0 ? 'text-green-600' : 'text-red-500'
                         }`}>
                           {item.stock_on_hand}
                         </span>
@@ -459,13 +539,185 @@ export default function ZohoInventory() {
               
               {filteredItems.length > 100 && (
                 <div className="text-center py-4 text-gray-500 text-sm border-t">
-                  Showing first 100 of {filteredItems.length.toLocaleString()} results. Use search to narrow down.
+                  Showing first 100 of {filteredItems.length.toLocaleString()} results.
                 </div>
               )}
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Modal */}
+      {editingItem && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b sticky top-0 bg-white">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold">Edit Product</h2>
+                <Button variant="ghost" size="sm" onClick={closeEditModal}>
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+            </div>
+
+            {loadingDetails ? (
+              <div className="p-6 text-center">
+                <RefreshCw className="w-8 h-8 animate-spin mx-auto text-gray-400" />
+                <p className="mt-2 text-gray-500">Loading item details...</p>
+              </div>
+            ) : (
+              <div className="p-6 space-y-6">
+                {/* Save Message */}
+                {saveMessage && (
+                  <div className={`p-3 rounded ${
+                    saveMessage.type === 'success' 
+                      ? 'bg-green-100 text-green-700 border border-green-200' 
+                      : 'bg-red-100 text-red-700 border border-red-200'
+                  }`}>
+                    {saveMessage.text}
+                  </div>
+                )}
+
+                {/* Basic Info */}
+                <div>
+                  <h3 className="font-semibold text-gray-700 mb-3">Basic Information</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Product Name</label>
+                      <Input
+                        value={editForm.name || ''}
+                        onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">SKU</label>
+                      <Input
+                        value={editForm.sku || ''}
+                        onChange={(e) => setEditForm({...editForm, sku: e.target.value})}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Description</label>
+                      <textarea
+                        className="w-full border rounded-md p-2 text-sm"
+                        rows={2}
+                        value={editForm.description || ''}
+                        onChange={(e) => setEditForm({...editForm, description: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pricing */}
+                <div>
+                  <h3 className="font-semibold text-gray-700 mb-3">Pricing</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Cost Price (Purchase Rate)</label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={editForm.purchase_rate || 0}
+                        onChange={(e) => setEditForm({...editForm, purchase_rate: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Selling Price (Rate)</label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={editForm.rate || 0}
+                        onChange={(e) => setEditForm({...editForm, rate: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Details */}
+                <div>
+                  <h3 className="font-semibold text-gray-700 mb-3">Details</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Brand</label>
+                      <Input
+                        value={editForm.brand || ''}
+                        onChange={(e) => setEditForm({...editForm, brand: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Manufacturer</label>
+                      <Input
+                        value={editForm.manufacturer || ''}
+                        onChange={(e) => setEditForm({...editForm, manufacturer: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Unit</label>
+                      <Input
+                        value={editForm.unit || ''}
+                        onChange={(e) => setEditForm({...editForm, unit: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Reorder Level</label>
+                      <Input
+                        type="number"
+                        value={editForm.reorder_level || 0}
+                        onChange={(e) => setEditForm({...editForm, reorder_level: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* GL Accounts (Read-only) */}
+                <div>
+                  <h3 className="font-semibold text-gray-700 mb-3">GL Accounts (from Zoho)</h3>
+                  <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Sales Account</label>
+                      <p className="text-sm font-medium">{editForm.account_name || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Purchase Account</label>
+                      <p className="text-sm font-medium">{editForm.purchase_account_name || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Inventory Account</label>
+                      <p className="text-sm font-medium">{editForm.inventory_account_name || '-'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Sales Tax</label>
+                      <p className="text-sm font-medium">
+                        {editForm.tax_name ? `${editForm.tax_name} (${editForm.tax_percentage}%)` : '-'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">Purchase Tax</label>
+                      <p className="text-sm font-medium">
+                        {editForm.purchase_tax_name ? `${editForm.purchase_tax_name} (${editForm.purchase_tax_percentage}%)` : '-'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="p-6 border-t bg-gray-50 flex justify-end gap-3">
+              <Button variant="outline" onClick={closeEditModal}>
+                Cancel
+              </Button>
+              <Button onClick={saveItem} disabled={saving || loadingDetails}>
+                {saving ? (
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
