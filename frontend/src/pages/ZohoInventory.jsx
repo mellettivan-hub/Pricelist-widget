@@ -4,7 +4,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { 
   RefreshCw, Search, Package, Filter, X, 
-  ShoppingCart, Tag, Boxes, TrendingUp, CheckCircle, Factory, Edit, Save, BookOpen, CheckSquare
+  ShoppingCart, Tag, Boxes, TrendingUp, CheckCircle, Factory, Edit, Save, BookOpen, CheckSquare, AlertCircle, CheckCircle2, XCircle
 } from 'lucide-react';
 
 const API_URL = process.env.REACT_APP_BACKEND_URL;
@@ -241,6 +241,8 @@ export default function ZohoInventory({ user }) {
     
     let successCount = 0;
     let errorCount = 0;
+    let verifiedCount = 0;
+    const verificationResults = [];
     
     for (const itemId of selectedItems) {
       try {
@@ -253,6 +255,15 @@ export default function ZohoInventory({ user }) {
         const result = await res.json();
         if (result.success) {
           successCount++;
+          // Check verification
+          if (result.verification && result.verification.all_verified) {
+            verifiedCount++;
+          }
+          verificationResults.push({
+            itemId,
+            name: result.verification?.item_name || itemId,
+            verified: result.verification?.all_verified || false
+          });
         } else {
           errorCount++;
         }
@@ -270,14 +281,21 @@ export default function ZohoInventory({ user }) {
     
     await logActivity(
       'BULK_UPDATE',
-      `Bulk updated ${successCount} items - ${changes.join(', ')}`,
+      `Bulk updated ${successCount} items (${verifiedCount} verified) - ${changes.join(', ')}`,
       null,
       null
     );
     
+    // Show verification status in message
+    const verificationMsg = verifiedCount === successCount 
+      ? ` - All ${verifiedCount} verified in Zoho ✓`
+      : verifiedCount > 0 
+        ? ` - ${verifiedCount}/${successCount} verified in Zoho`
+        : '';
+    
     setBulkMessage({
-      type: successCount > 0 ? 'success' : 'error',
-      text: `Updated ${successCount} items${errorCount > 0 ? `, ${errorCount} failed` : ''}`
+      type: successCount > 0 ? (verifiedCount === successCount ? 'success' : 'warning') : 'error',
+      text: `Updated ${successCount} items${verificationMsg}${errorCount > 0 ? `, ${errorCount} failed` : ''}`
     });
     
     setBulkSaving(false);
@@ -294,7 +312,7 @@ export default function ZohoInventory({ user }) {
       setTimeout(() => {
         closeBulkEdit();
         clearSelection();
-      }, 1500);
+      }, 2000);
     }
   };
 
@@ -388,7 +406,36 @@ export default function ZohoInventory({ user }) {
       const result = await res.json();
       
       if (result.success) {
-        setSaveMessage({ type: 'success', text: 'Item updated successfully in Zoho!' });
+        // Check verification results
+        const verification = result.verification;
+        
+        if (verification && verification.all_verified) {
+          // Build a detailed success message with verification info
+          const verifiedFields = verification.checks
+            .filter(c => c.verified)
+            .map(c => c.field)
+            .join(', ');
+          
+          setSaveMessage({ 
+            type: 'success', 
+            text: `✓ Update verified in Zoho! Fields confirmed: ${verifiedFields || 'All changes saved'}`,
+            verification: verification
+          });
+        } else if (verification && !verification.all_verified) {
+          // Some fields failed verification
+          const failedChecks = verification.checks.filter(c => !c.verified);
+          const warningText = failedChecks
+            .map(c => `${c.field}: expected "${c.expected}" but got "${c.actual}"`)
+            .join('; ');
+          
+          setSaveMessage({ 
+            type: 'warning', 
+            text: `⚠ Update sent but verification found differences: ${warningText}`,
+            verification: verification
+          });
+        } else {
+          setSaveMessage({ type: 'success', text: 'Item updated successfully in Zoho!' });
+        }
         
         const changes = [];
         if (editForm.name !== editingItem.name) changes.push(`Name: ${editForm.name}`);
@@ -404,19 +451,26 @@ export default function ZohoInventory({ user }) {
           editingItem.name
         );
         
+        // Use verified data if available
+        const verifiedData = verification?.verified_data || {};
+        
         setAllItems(prev => prev.map(item => 
           item.item_id === editingItem.item_id 
             ? { 
                 ...item, 
                 ...editForm, 
-                rate: parseFloat(editForm.rate), 
-                purchase_rate: parseFloat(editForm.purchase_rate),
-                account_name: accounts.find(a => a.account_id === editForm.account_id)?.account_name || editForm.account_name,
-                purchase_account_name: accounts.find(a => a.account_id === editForm.purchase_account_id)?.account_name || editForm.purchase_account_name,
+                rate: verifiedData.rate ?? parseFloat(editForm.rate), 
+                purchase_rate: verifiedData.purchase_rate ?? parseFloat(editForm.purchase_rate),
+                brand: verifiedData.brand ?? editForm.brand,
+                manufacturer: verifiedData.manufacturer ?? editForm.manufacturer,
+                account_name: verifiedData.account_name || accounts.find(a => a.account_id === editForm.account_id)?.account_name || editForm.account_name,
+                purchase_account_name: verifiedData.purchase_account_name || accounts.find(a => a.account_id === editForm.purchase_account_id)?.account_name || editForm.purchase_account_name,
               }
             : item
         ));
-        setTimeout(() => closeEditModal(), 1500);
+        
+        // Delay closing for user to see verification result
+        setTimeout(() => closeEditModal(), verification?.all_verified ? 2000 : 3000);
       } else {
         setSaveMessage({ type: 'error', text: result.detail || 'Failed to update item' });
       }
@@ -804,11 +858,16 @@ export default function ZohoInventory({ user }) {
 
             <div className="p-6 space-y-4">
               {bulkMessage && (
-                <div className={`p-3 rounded ${
+                <div className={`p-3 rounded flex items-center gap-2 ${
                   bulkMessage.type === 'success' 
                     ? 'bg-green-100 text-green-700 border border-green-200' 
+                    : bulkMessage.type === 'warning'
+                    ? 'bg-amber-100 text-amber-700 border border-amber-200'
                     : 'bg-red-100 text-red-700 border border-red-200'
                 }`}>
+                  {bulkMessage.type === 'success' && <CheckCircle2 className="w-5 h-5 flex-shrink-0" />}
+                  {bulkMessage.type === 'warning' && <AlertCircle className="w-5 h-5 flex-shrink-0" />}
+                  {bulkMessage.type === 'error' && <XCircle className="w-5 h-5 flex-shrink-0" />}
                   {bulkMessage.text}
                 </div>
               )}
@@ -931,9 +990,32 @@ export default function ZohoInventory({ user }) {
                   <div className={`p-3 rounded ${
                     saveMessage.type === 'success' 
                       ? 'bg-green-100 text-green-700 border border-green-200' 
+                      : saveMessage.type === 'warning'
+                      ? 'bg-amber-100 text-amber-700 border border-amber-200'
                       : 'bg-red-100 text-red-700 border border-red-200'
                   }`}>
-                    {saveMessage.text}
+                    <div className="flex items-start gap-2">
+                      {saveMessage.type === 'success' && <CheckCircle2 className="w-5 h-5 mt-0.5 flex-shrink-0" />}
+                      {saveMessage.type === 'warning' && <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />}
+                      {saveMessage.type === 'error' && <XCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />}
+                      <div className="flex-1">
+                        <p className="font-medium">{saveMessage.text}</p>
+                        {saveMessage.verification && saveMessage.verification.checks && (
+                          <div className="mt-2 text-sm space-y-1">
+                            {saveMessage.verification.checks.map((check, idx) => (
+                              <div key={idx} className="flex items-center gap-2">
+                                {check.verified ? (
+                                  <CheckCircle className="w-3.5 h-3.5 text-green-600" />
+                                ) : (
+                                  <XCircle className="w-3.5 h-3.5 text-red-500" />
+                                )}
+                                <span>{check.field}: {check.actual}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
 

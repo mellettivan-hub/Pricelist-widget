@@ -1546,7 +1546,7 @@ async def get_zoho_accounts():
 
 @api_router.put("/zoho/items/{item_id}")
 async def update_zoho_item(item_id: str, update_data: ItemUpdate):
-    """Update item fields in Zoho Inventory"""
+    """Update item fields in Zoho Inventory with verification"""
     try:
         zoho = ZohoInventoryClient(db)
         
@@ -1578,8 +1578,121 @@ async def update_zoho_item(item_id: str, update_data: ItemUpdate):
         if not data:
             raise HTTPException(status_code=400, detail="No fields to update")
         
+        # Perform the update
         result = await zoho.update_item(item_id, data)
-        return {"success": True, "result": result}
+        
+        # Verify the update by fetching the item back from Zoho
+        import asyncio
+        await asyncio.sleep(0.5)  # Small delay to ensure Zoho has processed the update
+        
+        verification_result = await zoho.get_item(item_id)
+        verified_item = verification_result.get("item", {})
+        
+        # Check if the critical fields were updated correctly
+        verification_checks = []
+        verified_data = {}
+        
+        def safe_float(val, default=0.0):
+            if val is None or val == '':
+                return default
+            try:
+                return float(val)
+            except (ValueError, TypeError):
+                return default
+        
+        # Check each field that was supposed to be updated
+        if "rate" in data:
+            zoho_rate = safe_float(verified_item.get("rate"))
+            expected_rate = safe_float(data["rate"])
+            verified_data["rate"] = zoho_rate
+            verification_checks.append({
+                "field": "Selling Price",
+                "expected": expected_rate,
+                "actual": zoho_rate,
+                "verified": abs(zoho_rate - expected_rate) < 0.01
+            })
+        
+        if "purchase_rate" in data:
+            zoho_purchase_rate = safe_float(verified_item.get("purchase_rate"))
+            expected_purchase_rate = safe_float(data["purchase_rate"])
+            verified_data["purchase_rate"] = zoho_purchase_rate
+            verification_checks.append({
+                "field": "Cost Price",
+                "expected": expected_purchase_rate,
+                "actual": zoho_purchase_rate,
+                "verified": abs(zoho_purchase_rate - expected_purchase_rate) < 0.01
+            })
+        
+        if "brand" in data:
+            zoho_brand = verified_item.get("brand", "")
+            expected_brand = data["brand"]
+            verified_data["brand"] = zoho_brand
+            verification_checks.append({
+                "field": "Brand",
+                "expected": expected_brand,
+                "actual": zoho_brand,
+                "verified": zoho_brand == expected_brand
+            })
+        
+        if "manufacturer" in data:
+            zoho_manufacturer = verified_item.get("manufacturer", "")
+            expected_manufacturer = data["manufacturer"]
+            verified_data["manufacturer"] = zoho_manufacturer
+            verification_checks.append({
+                "field": "Manufacturer",
+                "expected": expected_manufacturer,
+                "actual": zoho_manufacturer,
+                "verified": zoho_manufacturer == expected_manufacturer
+            })
+        
+        if "name" in data:
+            zoho_name = verified_item.get("name", "")
+            expected_name = data["name"]
+            verified_data["name"] = zoho_name
+            verification_checks.append({
+                "field": "Name",
+                "expected": expected_name,
+                "actual": zoho_name,
+                "verified": zoho_name == expected_name
+            })
+        
+        if "account_id" in data:
+            zoho_account_id = verified_item.get("account_id", "")
+            expected_account_id = data["account_id"]
+            verified_data["account_id"] = zoho_account_id
+            verified_data["account_name"] = verified_item.get("account_name", "")
+            verification_checks.append({
+                "field": "Sales Account",
+                "expected": expected_account_id,
+                "actual": zoho_account_id,
+                "verified": str(zoho_account_id) == str(expected_account_id)
+            })
+        
+        if "purchase_account_id" in data:
+            zoho_purchase_account_id = verified_item.get("purchase_account_id", "")
+            expected_purchase_account_id = data["purchase_account_id"]
+            verified_data["purchase_account_id"] = zoho_purchase_account_id
+            verified_data["purchase_account_name"] = verified_item.get("purchase_account_name", "")
+            verification_checks.append({
+                "field": "Purchase Account",
+                "expected": expected_purchase_account_id,
+                "actual": zoho_purchase_account_id,
+                "verified": str(zoho_purchase_account_id) == str(expected_purchase_account_id)
+            })
+        
+        all_verified = all(check["verified"] for check in verification_checks) if verification_checks else True
+        
+        return {
+            "success": True,
+            "result": result,
+            "verification": {
+                "all_verified": all_verified,
+                "checks": verification_checks,
+                "verified_data": verified_data,
+                "item_name": verified_item.get("name", ""),
+                "item_sku": verified_item.get("sku", "")
+            }
+        }
     except HTTPException:
         raise
     except Exception as e:
